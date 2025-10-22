@@ -12,7 +12,7 @@ fn self_bifix_free_words(alphabet_size: u32, word_size: u32) -> impl Iterator<It
                 k = k.div_euclid(alphabet_size);
             }
 
-            result
+            Word::new(result.data.into_iter().rev())
         })
         .filter(|word| word.is_self_bifix_free())
 }
@@ -21,14 +21,50 @@ fn can_include(word: &Word, set: &[Word]) -> bool {
     set.iter().all(|other| word.is_bifix_free_with(other))
 }
 
-/// Returns true if a is included in b or vice versa.
-/// Makes the assumption that both sets are ordered
-/// similarly.
-fn are_sets_comparable(a: &[Word], b: &[Word]) -> bool {
-    let mut a_k = 0;
-    let mut b_k = 0;
+/// returns true if a includes b
+fn includes(a: &[Word], b: &[Word]) -> bool {
+    let mut k = 0;
 
-    todo!()
+    for w in b {
+        loop {
+            if k >= a.len() {
+                return false;
+            }
+
+            if &a[k] == w {
+                break;
+            }
+
+            k += 1;
+        }
+    }
+
+    true
+}
+
+/// Compares set in inclusion terms.
+/// Makes the assumption that both sets are ordered.
+fn compare_sets(a: &[Word], b: &[Word]) -> Option<std::cmp::Ordering> {
+    match (includes(a, b), includes(b, a)) {
+        (true, true) => Some(std::cmp::Ordering::Equal),
+        (true, false) => Some(std::cmp::Ordering::Greater),
+        (false, true) => Some(std::cmp::Ordering::Less),
+        (false, false) => None,
+    }
+}
+
+pub fn is_sequence_valid(sequence: &[Vec<Word>]) -> bool {
+    if sequence.is_empty() {
+        return true;
+    }
+
+    for w in sequence.windows(2) {
+        if compare_sets(&w[0], &w[1]).is_some() {
+            return false;
+        }
+    }
+
+    compare_sets(sequence.first().unwrap(), sequence.last().unwrap()).is_none()
 }
 
 pub fn bifix_free_sets(alphabet_size: u32, max_word_size: u32) -> Vec<Vec<Word>> {
@@ -36,7 +72,8 @@ pub fn bifix_free_sets(alphabet_size: u32, max_word_size: u32) -> Vec<Vec<Word>>
         .flat_map(|n| self_bifix_free_words(alphabet_size, n))
         .collect::<Vec<_>>();
 
-    let mut result = vec![];
+    // includes the empty set
+    let mut result = vec![vec![]];
 
     // both vecs are kept in sync; the first contains the words, the second contains their index in words
     let mut current_set = vec![];
@@ -79,10 +116,9 @@ pub fn bifix_free_sets(alphabet_size: u32, max_word_size: u32) -> Vec<Vec<Word>>
 
 #[cfg(test)]
 mod tests {
-    use std::iter::once;
 
     use super::*;
-    use crate::math::{permutation::Permutation, word::Word};
+    use crate::math::word::Word;
 
     #[test]
     fn test_self_bifix_free_words() {
@@ -93,56 +129,90 @@ mod tests {
 
         assert_eq!(
             self_bifix_free_words(2, 2).collect::<Vec<_>>(),
-            vec![Word::new([1, 0]), Word::new([0, 1])]
+            vec![Word::new([0, 1]), Word::new([1, 0])]
         );
 
         assert_eq!(
             self_bifix_free_words(2, 3).collect::<Vec<_>>(),
             vec![
+                Word::new([0, 0, 1]),
+                Word::new([0, 1, 1]),
                 Word::new([1, 0, 0]),
                 Word::new([1, 1, 0]),
-                Word::new([0, 0, 1]),
-                Word::new([0, 1, 1])
             ]
         );
 
         assert_eq!(
             self_bifix_free_words(2, 4).collect::<Vec<_>>(),
             vec![
-                Word::new([1, 0, 0, 0]),
-                Word::new([1, 1, 0, 0]),
-                Word::new([1, 1, 1, 0]),
                 Word::new([0, 0, 0, 1]),
                 Word::new([0, 0, 1, 1]),
                 Word::new([0, 1, 1, 1]),
+                Word::new([1, 0, 0, 0]),
+                Word::new([1, 1, 0, 0]),
+                Word::new([1, 1, 1, 0]),
             ]
         );
 
         assert_eq!(
             self_bifix_free_words(2, 5).collect::<Vec<_>>(),
             vec![
-                Word::new([1, 0, 0, 0, 0]),
-                Word::new([1, 1, 0, 0, 0]),
-                Word::new([1, 0, 1, 0, 0]),
-                Word::new([1, 1, 1, 0, 0]),
-                Word::new([1, 1, 0, 1, 0]),
-                Word::new([1, 1, 1, 1, 0]),
                 Word::new([0, 0, 0, 0, 1]),
-                Word::new([0, 0, 1, 0, 1]),
                 Word::new([0, 0, 0, 1, 1]),
-                Word::new([0, 1, 0, 1, 1]),
+                Word::new([0, 0, 1, 0, 1]),
                 Word::new([0, 0, 1, 1, 1]),
+                Word::new([0, 1, 0, 1, 1]),
                 Word::new([0, 1, 1, 1, 1]),
+                Word::new([1, 0, 0, 0, 0]),
+                Word::new([1, 0, 1, 0, 0]),
+                Word::new([1, 1, 0, 0, 0]),
+                Word::new([1, 1, 0, 1, 0]),
+                Word::new([1, 1, 1, 0, 0]),
+                Word::new([1, 1, 1, 1, 0]),
             ]
         );
     }
 
     #[test]
-    fn test_enumeration() {
-        assert_eq!(bifix_free_sets(2, 5).len(), 13);
-        assert_eq!(bifix_free_sets(3, 2).len(), 16);
+    fn test_order() {
+        let max_word_size = 5;
 
-        assert!(bifix_free_sets(2, 5).is_sorted());
-        assert!(bifix_free_sets(3, 2).is_sorted());
+        let words = (1..=max_word_size)
+            .flat_map(|n| self_bifix_free_words(2, n))
+            .collect::<Vec<_>>();
+
+        assert!(words.is_sorted());
+    }
+
+    #[test]
+    fn test_enumeration() {
+        assert_eq!(bifix_free_sets(2, 5).len(), 14);
+        assert_eq!(bifix_free_sets(3, 2).len(), 17);
+    }
+
+    #[test]
+    fn test_compare_sets() {
+        assert_eq!(
+            compare_sets(&[Word::new([0]), Word::new([1])], &[Word::new([1])]),
+            Some(std::cmp::Ordering::Greater)
+        );
+        assert_eq!(
+            compare_sets(&[Word::new([0]), Word::new([2])], &[Word::new([1])]),
+            None
+        );
+        assert_eq!(
+            compare_sets(
+                &[Word::new([0]), Word::new([1])],
+                &[Word::new([0]), Word::new([1])]
+            ),
+            Some(std::cmp::Ordering::Equal)
+        );
+        assert_eq!(
+            compare_sets(
+                &[Word::new([0]), Word::new([2])],
+                &[Word::new([0]), Word::new([1])]
+            ),
+            None
+        );
     }
 }
