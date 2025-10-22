@@ -35,8 +35,8 @@ impl Word {
                 continue;
             }
 
-            let self_offset = 0.max(offset) as usize;
-            let other_offset = 0.max(-offset) as usize;
+            let self_offset = 0.max(-offset) as usize;
+            let other_offset = 0.max(offset) as usize;
 
             let len = (self_size - self_offset).min(other_size - other_offset);
 
