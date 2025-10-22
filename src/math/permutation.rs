@@ -2,6 +2,8 @@ use std::fmt::Display;
 
 use crate::math::word::Word;
 
+use smallvec::{SmallVec, smallvec};
+
 #[derive(Clone, Debug)]
 pub struct Permutation {
     pub set: Vec<Word>,
@@ -73,7 +75,7 @@ impl Permutation {
         let conf_len = configuration.data.len();
 
         // we track the progress of reading each word
-        let mut progress = vec![0; self.set.len()];
+        let mut progress: SmallVec<[usize; 8]> = smallvec![0; self.set.len()];
 
         // we work in two phases : first we need to detect a first word.
         // If we fail to do so, a copy of the input word is returned.
@@ -179,18 +181,10 @@ mod tests {
     fn display() {
         let perm = Permutation {
             set: vec![
-                Word {
-                    data: vec![2, 0, 1],
-                },
-                Word {
-                    data: vec![2, 1, 0],
-                },
-                Word {
-                    data: vec![2, 1, 1],
-                },
-                Word {
-                    data: vec![2, 0, 0],
-                },
+                Word::new([2, 0, 1]),
+                Word::new([2, 1, 0]),
+                Word::new([2, 1, 1]),
+                Word::new([2, 0, 0]),
             ],
             map: vec![1, 2, 3, 0],
         };
@@ -202,18 +196,10 @@ mod tests {
     fn progress_reading() {
         let perm = Permutation {
             set: vec![
-                Word {
-                    data: vec![2, 0, 1],
-                },
-                Word {
-                    data: vec![2, 1, 0],
-                },
-                Word {
-                    data: vec![2, 1, 1],
-                },
-                Word {
-                    data: vec![2, 0, 0],
-                },
+                Word::new([2, 0, 1]),
+                Word::new([2, 1, 0]),
+                Word::new([2, 1, 1]),
+                Word::new([2, 0, 0]),
             ],
             map: vec![1, 2, 3, 0],
         };

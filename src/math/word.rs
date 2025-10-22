@@ -1,10 +1,12 @@
 use std::fmt::Display;
 
+use smallvec::SmallVec;
+
 /// A word with alphabet size up to 256.
 /// Meant for both words in substitutions and configurations.
 #[derive(Clone, Debug, PartialEq, Eq, Default)]
 pub struct Word {
-    pub data: Vec<u8>,
+    pub data: SmallVec<[u8; 8]>,
 }
 
 impl Display for Word {
@@ -56,11 +58,12 @@ impl Word {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use smallvec::smallvec;
 
     #[test]
     fn display() {
         let word = Word {
-            data: vec![0, 1, 2, 3],
+            data: smallvec![0, 1, 2, 3],
         };
 
         assert_eq!("0123", format!("{word}"));
@@ -68,44 +71,78 @@ mod tests {
 
     #[test]
     fn bifix_free() {
-        assert!(Word { data: vec![0, 0] }.is_bifix_free_with(&Word { data: vec![1, 1] }));
-        assert!(!Word { data: vec![0, 1] }.is_bifix_free_with(&Word { data: vec![1, 1] }));
         assert!(
             Word {
-                data: vec![1, 0, 1, 0, 0]
+                data: smallvec![0, 0]
             }
             .is_bifix_free_with(&Word {
-                data: vec![1, 1, 0, 0, 0,]
+                data: smallvec![1, 1]
+            })
+        );
+        assert!(
+            !Word {
+                data: smallvec![0, 1]
+            }
+            .is_bifix_free_with(&Word {
+                data: smallvec![1, 1]
+            })
+        );
+        assert!(
+            Word {
+                data: smallvec![1, 0, 1, 0, 0]
+            }
+            .is_bifix_free_with(&Word {
+                data: smallvec![1, 1, 0, 0, 0,]
             })
         );
     }
 
     #[test]
     fn self_bifix_free() {
-        assert!(Word { data: vec![0] }.is_self_bifix_free());
-        assert!(Word { data: vec![1] }.is_self_bifix_free());
-
-        assert!(!Word { data: vec![0, 0] }.is_self_bifix_free());
-        assert!(Word { data: vec![0, 1] }.is_self_bifix_free());
-        assert!(Word { data: vec![1, 0] }.is_self_bifix_free());
-        assert!(!Word { data: vec![1, 1] }.is_self_bifix_free());
+        assert!(Word { data: smallvec![0] }.is_self_bifix_free());
+        assert!(Word { data: smallvec![1] }.is_self_bifix_free());
 
         assert!(
-            Word {
-                data: vec![1, 0, 1, 0, 0]
+            !Word {
+                data: smallvec![0, 0]
             }
             .is_self_bifix_free()
         );
         assert!(
             Word {
-                data: vec![1, 1, 0, 0, 0]
+                data: smallvec![0, 1]
+            }
+            .is_self_bifix_free()
+        );
+        assert!(
+            Word {
+                data: smallvec![1, 0]
+            }
+            .is_self_bifix_free()
+        );
+        assert!(
+            !Word {
+                data: smallvec![1, 1]
+            }
+            .is_self_bifix_free()
+        );
+
+        assert!(
+            Word {
+                data: smallvec![1, 0, 1, 0, 0]
+            }
+            .is_self_bifix_free()
+        );
+        assert!(
+            Word {
+                data: smallvec![1, 1, 0, 0, 0]
             }
             .is_self_bifix_free()
         );
 
         assert!(
             !Word {
-                data: vec![1, 1, 0, 0, 0, 1, 1, 0, 0, 0]
+                data: smallvec![1, 1, 0, 0, 0, 1, 1, 0, 0, 0]
             }
             .is_self_bifix_free()
         );
