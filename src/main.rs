@@ -5,7 +5,7 @@ use std::{
     time::Duration,
 };
 
-use eframe::egui;
+use eframe::egui::{self, ProgressBar};
 
 fn main() {
     let native_options = eframe::NativeOptions::default();
@@ -19,7 +19,7 @@ fn main() {
 
 #[derive(Default)]
 pub struct SimpleCGDStatisticsApp {
-    is_process_ongoing: Arc<Mutex<bool>>,
+    progress: Arc<Mutex<Option<f32>>>,
 }
 
 impl eframe::App for SimpleCGDStatisticsApp {
@@ -27,19 +27,20 @@ impl eframe::App for SimpleCGDStatisticsApp {
         egui::CentralPanel::default().show(ctx, |ui| {
             ui.heading("'sup");
 
-            if !*self.is_process_ongoing.lock().unwrap() {
-                if ui.button("Click me").clicked() {
-                    *self.is_process_ongoing.lock().unwrap() = true;
+            if let Some(progress) = *self.progress.lock().unwrap() {
+                ui.add(ProgressBar::new(progress).show_percentage().animate(true));
+            } else if ui.button("Click me").clicked() {
+                *self.progress.lock().unwrap() = Some(0.0);
 
-                    let copy = Arc::clone(&self.is_process_ongoing);
+                let copy = Arc::clone(&self.progress);
 
-                    std::thread::spawn(move || {
-                        std::thread::sleep(Duration::from_secs(3));
-                        *copy.lock().unwrap() = false;
-                    });
-                }
-            } else {
-                ui.spinner();
+                std::thread::spawn(move || {
+                    for k in 1..=10 {
+                        std::thread::sleep(Duration::from_secs(1));
+                        *copy.lock().unwrap() = Some(k as f32 / 10.0);
+                    }
+                    *copy.lock().unwrap() = None;
+                });
             }
         });
     }
