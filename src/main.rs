@@ -5,7 +5,7 @@ use std::{
     time::Duration,
 };
 
-use eframe::egui::{self, ProgressBar};
+use eframe::egui::{self, Color32, Frame, ProgressBar};
 
 fn main() {
     let native_options = eframe::NativeOptions::default();
@@ -24,6 +24,16 @@ pub struct SimpleCGDStatisticsApp {
 
 impl eframe::App for SimpleCGDStatisticsApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        if let Some(progress) = *self.progress.lock().unwrap() {
+            egui::Area::new(egui::Id::new("loading_popup"))
+                .default_size([10.0, 10.0])
+                .show(ctx, |ui| {
+                    Frame::new().fill(Color32::BLACK).show(ui, |ui| {
+                        ui.add(ProgressBar::new(progress).show_percentage().animate(true));
+                    })
+                });
+        }
+
         egui::CentralPanel::default().show(ctx, |ui| {
             ui.heading("'sup");
 
