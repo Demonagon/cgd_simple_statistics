@@ -21,7 +21,17 @@ fn can_include(word: &Word, set: &[Word]) -> bool {
     set.iter().all(|other| word.is_bifix_free_with(other))
 }
 
-fn bifix_free_sets(alphabet_size: u32, max_word_size: u32) -> Vec<Vec<Word>> {
+/// Returns true if a is included in b or vice versa.
+/// Makes the assumption that both sets are ordered
+/// similarly.
+fn are_sets_comparable(a: &[Word], b: &[Word]) -> bool {
+    let mut a_k = 0;
+    let mut b_k = 0;
+
+    todo!()
+}
+
+pub fn bifix_free_sets(alphabet_size: u32, max_word_size: u32) -> Vec<Vec<Word>> {
     let words = (1..=max_word_size)
         .flat_map(|n| self_bifix_free_words(alphabet_size, n))
         .collect::<Vec<_>>();
@@ -66,6 +76,7 @@ fn bifix_free_sets(alphabet_size: u32, max_word_size: u32) -> Vec<Vec<Word>> {
 
     result
 }
+
 #[cfg(test)]
 mod tests {
     use std::iter::once;
@@ -130,5 +141,8 @@ mod tests {
     fn test_enumeration() {
         assert_eq!(bifix_free_sets(2, 5).len(), 13);
         assert_eq!(bifix_free_sets(3, 2).len(), 16);
+
+        assert!(bifix_free_sets(2, 5).is_sorted());
+        assert!(bifix_free_sets(3, 2).is_sorted());
     }
 }

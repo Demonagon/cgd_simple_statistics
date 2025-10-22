@@ -19,6 +19,22 @@ impl Display for Word {
     }
 }
 
+impl PartialOrd for Word {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for Word {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        if self.data.len() == other.data.len() {
+            return self.data.cmp(&other.data);
+        }
+
+        self.data.len().cmp(&other.data.len())
+    }
+}
+
 impl Word {
     pub fn new<T: IntoIterator<Item = u8>>(data: T) -> Self {
         Self {
