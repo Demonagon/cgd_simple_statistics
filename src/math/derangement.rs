@@ -4,6 +4,11 @@ fn factorial(k: u32) -> u32 {
 
 fn permutation(k: u32, write_to: &mut [usize]) {
     let size = write_to.len() as u32;
+
+    if size == 0 {
+        return;
+    }
+
     if size == 1 {
         write_to[0] = 0;
         return;
