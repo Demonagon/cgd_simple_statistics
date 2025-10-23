@@ -5,7 +5,8 @@ use std::{
     time::Duration,
 };
 
-use eframe::egui::{self, Color32, Frame, ProgressBar};
+use eframe::egui::{self, Button, Color32, Frame, ProgressBar};
+use egui_plot::{Line, Plot, PlotPoints};
 
 fn main() {
     let native_options = eframe::NativeOptions::default();
@@ -25,21 +26,21 @@ pub struct SimpleCGDStatisticsApp {
 impl eframe::App for SimpleCGDStatisticsApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         if let Some(progress) = *self.progress.lock().unwrap() {
-            egui::Area::new(egui::Id::new("loading_popup"))
-                .default_size([10.0, 10.0])
-                .show(ctx, |ui| {
-                    Frame::new().fill(Color32::BLACK).show(ui, |ui| {
-                        ui.add(ProgressBar::new(progress).show_percentage().animate(true));
-                    })
-                });
+            egui::Window::new("Loading...").show(ctx, |ui| {
+                ui.add(ProgressBar::new(progress).show_percentage().animate(true));
+            });
         }
 
-        egui::CentralPanel::default().show(ctx, |ui| {
+        egui::SidePanel::left("Compute").show(ctx, |ui| {
             ui.heading("'sup");
 
-            if let Some(progress) = *self.progress.lock().unwrap() {
-                ui.add(ProgressBar::new(progress).show_percentage().animate(true));
-            } else if ui.button("Click me").clicked() {
+            let button_active = self.progress.lock().unwrap().is_none();
+
+            if ui
+                .add(Button::selectable(button_active, "Click me"))
+                .clicked()
+                && button_active
+            {
                 *self.progress.lock().unwrap() = Some(0.0);
 
                 let copy = Arc::clone(&self.progress);
@@ -52,6 +53,19 @@ impl eframe::App for SimpleCGDStatisticsApp {
                     *copy.lock().unwrap() = None;
                 });
             }
+        });
+
+        egui::CentralPanel::default().show(ctx, |ui| {
+            let sin: PlotPoints = (0..1000)
+                .map(|i| {
+                    let x = i as f64 * 0.01;
+                    [x, x.sin()]
+                })
+                .collect();
+            let line = Line::new("sin", sin);
+            Plot::new("my_plot")
+                .view_aspect(2.0)
+                .show(ui, |plot_ui| plot_ui.line(line));
         });
     }
 }
