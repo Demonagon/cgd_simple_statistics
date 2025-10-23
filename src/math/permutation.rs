@@ -4,7 +4,7 @@ use crate::math::word::Word;
 
 use smallvec::{SmallVec, smallvec};
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Permutation {
     pub set: Vec<Word>,
     pub map: Vec<usize>,
@@ -12,6 +12,11 @@ pub struct Permutation {
 
 impl Display for Permutation {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if self.set.is_empty() {
+            f.write_str("()")?;
+            return Ok(());
+        }
+
         let mut index = 0;
 
         f.write_fmt(format_args!("{}", self.set[index]))?;
