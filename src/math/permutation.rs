@@ -1,6 +1,6 @@
 use std::fmt::Display;
 
-use crate::math::word::Word;
+use crate::math::{derangement::permutations, permutation, word::Word};
 
 use smallvec::{SmallVec, smallvec};
 
@@ -10,6 +10,19 @@ pub struct Permutation {
     pub map: Vec<usize>,
 }
 
+impl Permutation {
+    pub fn unary(alphabet_size: u32, number: u32) -> Self {
+        let mut set = vec![];
+        for k in 0..alphabet_size {
+            set.push(Word::new([k as u8]));
+        }
+
+        let map = permutations(alphabet_size)[number as usize].clone();
+
+        Self { set, map }
+    }
+}
+
 impl Display for Permutation {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         if self.set.is_empty() {
@@ -17,17 +30,29 @@ impl Display for Permutation {
             return Ok(());
         }
 
-        let mut index = 0;
+        let mut visited = vec![false; self.set.len()];
 
-        f.write_fmt(format_args!("{}", self.set[index]))?;
-
-        loop {
-            index = self.map[index];
-            if index == 0 {
-                break;
+        for index in 0..self.set.len() {
+            if visited[index] {
+                continue;
             }
 
-            f.write_fmt(format_args!(" -> {}", self.set[index]))?;
+            if index != 0 {
+                f.write_str(", ")?;
+            }
+            f.write_fmt(format_args!("{}", self.set[index]))?;
+            visited[index] = true;
+
+            let mut cycle_index = index;
+            loop {
+                cycle_index = self.map[cycle_index];
+                if cycle_index == index {
+                    break;
+                }
+
+                f.write_fmt(format_args!(" -> {}", self.set[cycle_index]))?;
+                visited[cycle_index] = true;
+            }
         }
 
         Ok(())
@@ -35,20 +60,17 @@ impl Display for Permutation {
 }
 
 pub fn rules_radius(rules: &[Permutation]) -> u32 {
-    let depth = rules.len();
-    let Some(max_word_size) = rules
+    rules
         .iter()
-        .flat_map(|perm| perm.set.iter().map(|word| word.len()))
-        .max()
-    else {
-        return 0;
-    };
-
-    if max_word_size == 0 {
-        return 0;
-    }
-
-    depth as u32 * (max_word_size as u32 - 1)
+        .map(|p| {
+            p.set
+                .iter()
+                .map(|w| w.len() as i32 - 1)
+                .max()
+                .unwrap_or(0)
+                .max(0) as u32
+        })
+        .sum()
 }
 
 pub fn apply_rules(rules: &[Permutation], mut word: Word) -> Word {
@@ -120,18 +142,11 @@ impl Permutation {
 
         let mut loop_completed = false;
 
-        println!("updating");
-        println!("{configuration}");
-
         loop {
-            println!("index {index}");
             self.progress_reading(&mut progress, configuration.data[index]);
-
-            println!("progress {progress:?}");
 
             // we found our first word
             if let Some(word_index) = self.found_word(&progress) {
-                println!("word found");
                 // we reset the progress
                 progress.iter_mut().for_each(|p| *p = 0);
 
@@ -149,14 +164,12 @@ impl Permutation {
 
             // we found nothing
             if loop_completed && !Permutation::progress_overlaps_boundary(&progress, index) {
-                println!("found nothing");
                 return configuration.clone();
             }
 
             index = (index + 1).rem_euclid(conf_len);
 
             if index == 0 {
-                println!("completed first loop");
                 loop_completed = true;
             }
         }
@@ -220,6 +233,18 @@ mod tests {
         };
 
         assert_eq!(format!("{perm}"), "201 -> 210 -> 211 -> 200");
+
+        let perm = Permutation {
+            set: vec![
+                Word::new([2, 0, 1]),
+                Word::new([2, 1, 0]),
+                Word::new([2, 1, 1]),
+                Word::new([2, 0, 0]),
+            ],
+            map: vec![1, 0, 3, 2],
+        };
+
+        assert_eq!(format!("{perm}"), "201 -> 210, 211 -> 200");
     }
 
     #[test]

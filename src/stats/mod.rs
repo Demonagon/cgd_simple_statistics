@@ -7,10 +7,12 @@ pub mod growth;
 
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 
+#[derive(Debug, Clone)]
 pub struct Statistics {
     pub growth: GrowthData,
 }
 
+#[derive(Debug, Clone)]
 pub struct StatisticalParameters {
     pub growth: GrowthParameters,
 }
@@ -27,8 +29,6 @@ impl StatisticalParameters {
         // for each rule, we do checks depending on the statistics
         // growth statistics run X configuration of size Y, for Z steps, and if one of them
         // goes 2x on size, the rule is considered growing
-
-        cache.precompute_up_to(alphabet_size, radius);
 
         let is_growing = indexes
             .into_par_iter()

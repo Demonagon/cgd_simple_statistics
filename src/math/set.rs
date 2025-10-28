@@ -1,3 +1,5 @@
+use std::io::Write;
+
 use crate::math::word::Word;
 
 fn self_bifix_free_words(alphabet_size: u32, word_size: u32) -> impl Iterator<Item = Word> {
@@ -104,6 +106,11 @@ pub fn bifix_free_sets(alphabet_size: u32, max_word_size: u32) -> Vec<Vec<Word>>
             // we completed a set
             if current_set.len() > 1 {
                 result.push(current_set.clone());
+                // DEBUG : for seeing progress
+                // if result.len() % 100 == 0 {
+                //     print!(".");
+                //     let _ = std::io::stdout().flush();
+                // }
             }
         }
 

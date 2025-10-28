@@ -1,4 +1,4 @@
-fn factorial(k: u32) -> u32 {
+pub fn factorial(k: u32) -> u32 {
     if k <= 1 { 1 } else { k * factorial(k - 1) }
 }
 
@@ -26,19 +26,28 @@ fn permutation(k: u32, write_to: &mut [usize]) {
     });
 }
 
-fn permutations(size: u32) -> impl Iterator<Item = Vec<usize>> {
+pub fn permutations(size: u32) -> Vec<Vec<usize>> {
+    if size == 0 {
+        return vec![vec![]];
+    }
+
     let total = factorial(size);
 
-    (0..total).map(move |k| {
-        let mut result = vec![0; size as usize];
-        permutation(k, &mut result);
-        result
-    })
+    (0..total)
+        .map(move |k| {
+            let mut result = vec![0; size as usize];
+            permutation(k, &mut result);
+            result
+        })
+        .collect()
 }
 
 /// Derangements are permutations with no fixed points
-pub fn derangements(size: u32) -> impl Iterator<Item = Vec<usize>> {
-    permutations(size).filter(|p| p.iter().enumerate().all(|(i, k)| i != *k))
+pub fn derangements(size: u32) -> Vec<Vec<usize>> {
+    permutations(size)
+        .into_iter()
+        .filter(|p| p.iter().enumerate().all(|(i, k)| i != *k))
+        .collect()
 }
 
 #[cfg(test)]
@@ -47,12 +56,9 @@ mod tests {
 
     #[test]
     fn test_permutations() {
+        assert_eq!(permutations(2), vec![vec![0, 1], vec![1, 0],]);
         assert_eq!(
-            permutations(2).collect::<Vec<_>>(),
-            vec![vec![0, 1], vec![1, 0],]
-        );
-        assert_eq!(
-            permutations(3).collect::<Vec<_>>(),
+            permutations(3),
             vec![
                 vec![0, 1, 2],
                 vec![1, 0, 2],
@@ -63,7 +69,7 @@ mod tests {
             ]
         );
         assert_eq!(
-            permutations(4).collect::<Vec<_>>(),
+            permutations(4),
             vec![
                 vec![0, 1, 2, 3],
                 vec![1, 0, 2, 3],
@@ -95,13 +101,10 @@ mod tests {
 
     #[test]
     fn test_derangements() {
-        assert_eq!(derangements(2).collect::<Vec<_>>(), vec![vec![1, 0],]);
+        assert_eq!(derangements(2), vec![vec![1, 0],]);
+        assert_eq!(derangements(3), vec![vec![2, 0, 1], vec![1, 2, 0],]);
         assert_eq!(
-            derangements(3).collect::<Vec<_>>(),
-            vec![vec![2, 0, 1], vec![1, 2, 0],]
-        );
-        assert_eq!(
-            derangements(4).collect::<Vec<_>>(),
+            derangements(4),
             vec![
                 vec![3, 0, 1, 2],
                 vec![1, 3, 0, 2],

@@ -1,53 +1,34 @@
 use std::{collections::HashMap, ops::Range};
 
-use crate::math::{cache::DataCache, permutation::Permutation};
+use crate::math::{cache::DataCache, derangement::factorial, permutation::Permutation};
 
-pub fn divisors(n: u32) -> impl Iterator<Item = u32> {
-    (1..=n).filter(move |&k| n.rem_euclid(k) == 0)
-}
+/// Counts how many ways we can "populate" a given list of set sizes
+fn count_possibilities(cache: &DataCache, alphabet_size: u32, set_sizes: &[u32]) -> u32 {
+    // A unary rule is placed in front of every rule
+    let mut total = factorial(alphabet_size);
 
-fn count_possibilities(
-    cache: &DataCache,
-    alphabet_size: u32,
-    depth: u32,
-    max_word_size: u32,
-) -> u32 {
-    let sets = cache
-        .sets
-        .get(alphabet_size, max_word_size)
-        .expect("Please precompute bifix-free sets before counting rules");
-
-    let mut lengths: HashMap<u32, u32> = HashMap::new();
-
-    for set in sets {
-        *lengths.entry(set.len() as u32).or_insert(0) += 1;
+    for size in set_sizes {
+        total *= cache
+            .possibilities
+            .permutation_possibilities
+            .get(&(alphabet_size, *size + 1))
+            .unwrap_or(&0)
     }
 
-    // earch length, we compute the number of ways we can create a single permutation:
-    // that's number of sets of a given size times the number of derangements of that size,
-    // summed over all sizes
-    let depth_1_count: u32 = lengths
-        .into_iter()
-        .map(|(len, count)| {
-            count
-                * cache
-                    .derangements
-                    .get(len)
-                    .expect("Please precompute derangements before counting rules")
-                    .len() as u32
-        })
-        .sum();
-
-    //The final number is then that to the power of the depth
-    depth_1_count.pow(depth)
+    total
 }
 
 /// Counts how many rules can be generated given these parameters.
 /// This a pretty expensive operation and should be only done rarely.
 pub fn count_rules(cache: &DataCache, alphabet_size: u32, radius: u32) -> u32 {
-    divisors(radius)
-        .map(|depth| count_possibilities(cache, alphabet_size, depth, radius.div_euclid(depth) + 1))
-        .sum()
+    cache
+        .sums
+        .sums
+        .get(&radius)
+        .expect("Precompute sums before counting rules")
+        .iter()
+        .map(|sequence| count_possibilities(cache, alphabet_size, sequence))
+        .sum::<u32>()
 }
 
 pub fn all_rule_indexes(cache: &DataCache, alphabet_size: u32, radius: u32) -> Range<u32> {
@@ -60,18 +41,26 @@ pub fn rule_from_index(
     radius: u32,
     mut number: u32,
 ) -> Vec<Permutation> {
-    let divisors = divisors(radius).collect::<Vec<_>>();
+    let sequences = cache
+        .sums
+        .sums
+        .get(&radius)
+        .expect("Precompute sums before getting rule from index");
+    let mut sequence_number = 0;
 
-    let depth = divisors[(number % divisors.len() as u32) as usize];
-    number /= divisors.len() as u32;
+    // we find the current sequence
+    while number >= count_possibilities(cache, alphabet_size, &sequences[sequence_number]) {
+        number -= count_possibilities(cache, alphabet_size, &sequences[sequence_number]);
+        sequence_number += 1;
+    }
 
-    let max_word_size = radius / depth + 1;
+    let sequence = &sequences[sequence_number];
 
     let mut result = vec![];
 
-    // 1 17 2
+    for value in sequence {
+        let max_word_size = value + 1;
 
-    for _ in 0..depth {
         let sets = cache
             .sets
             .get(alphabet_size, max_word_size)
@@ -105,6 +94,13 @@ pub fn rule_from_index(
         result.push(Permutation { set, map });
     }
 
+    // we add the "prefix" unary operation,
+    // that happens to be put at the end
+
+    let prefix_number = number % factorial(alphabet_size);
+
+    result.push(Permutation::unary(alphabet_size, prefix_number));
+
     result
 }
 
@@ -115,42 +111,36 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_divisors() {
-        assert_eq!(divisors(0).collect::<Vec<_>>(), vec![]);
-        assert_eq!(divisors(1).collect::<Vec<_>>(), vec![1]);
-        assert_eq!(divisors(2).collect::<Vec<_>>(), vec![1, 2]);
-
-        assert_eq!(divisors(5).collect::<Vec<_>>(), vec![1, 5]);
-        assert_eq!(divisors(6).collect::<Vec<_>>(), vec![1, 2, 3, 6]);
-        assert_eq!(divisors(12).collect::<Vec<_>>(), vec![1, 2, 3, 4, 6, 12]);
-    }
-
-    #[test]
     fn test_rule_counting() {
         let mut cache = DataCache::default();
         cache.precompute_up_to(3, 1);
 
         // all radius 0:
         // - identity,
-        // - 0 -> 1
-        // - 0 -> 1 -> 2 (x2 derangements)
-        // - 0 -> 2
-        // - 1 -> 2
-        // all radius 1:
-        // - 0 -> 21
-        // - 0 -> 12
-        // - 1 -> 20
-        // - 1 -> 02
-        // - 2 -> 10
-        // - 2 -> 01
-        // - 10 -> 20
-        // - 10 -> 12
-        // - 20 -> 21
-        // - 01 -> 21
-        // - 01 -> 02
-        // - 02 -> 12
+        // - 0 <-> 1
+        // - 0 <-> 1 <-> 2 (x2 derangements)
+        // - 0 <-> 2
+        // - 1 <-> 2
 
-        assert_eq!(count_rules(&cache, 3, 1), 18);
+        assert_eq!(count_rules(&cache, 3, 0), 6);
+
+        // all radius 1:
+        // - 0 <-> 21
+        // - 0 <-> 12
+        // - 1 <-> 20
+        // - 1 <-> 02
+        // - 2 <-> 10
+        // - 2 <-> 01
+        // - 10 <-> 20
+        // - 10 <-> 12
+        // - 20 <-> 21
+        // - 01 <-> 21
+        // - 01 <-> 02
+        // - 02 <-> 12
+
+        // with unary prefix, we have 6 such prefixes
+
+        assert_eq!(count_rules(&cache, 3, 1), 12 * 6);
     }
 
     #[test]
@@ -164,6 +154,55 @@ mod tests {
         // - 0 -> 1 -> 2 (x2 derangements)
         // - 0 -> 2
         // - 1 -> 2
+
+        assert_eq!(
+            rule_from_index(&cache, 3, 0, 0),
+            vec![Permutation {
+                set: vec![Word::new([0]), Word::new([1]), Word::new([2])],
+                map: vec![0, 1, 2],
+            }]
+        );
+
+        assert_eq!(
+            rule_from_index(&cache, 3, 0, 1),
+            vec![Permutation {
+                set: vec![Word::new([0]), Word::new([1]), Word::new([2])],
+                map: vec![1, 0, 2],
+            }]
+        );
+
+        assert_eq!(
+            rule_from_index(&cache, 3, 0, 2),
+            vec![Permutation {
+                set: vec![Word::new([0]), Word::new([1]), Word::new([2])],
+                map: vec![2, 0, 1],
+            }]
+        );
+
+        assert_eq!(
+            rule_from_index(&cache, 3, 0, 3),
+            vec![Permutation {
+                set: vec![Word::new([0]), Word::new([1]), Word::new([2])],
+                map: vec![0, 2, 1],
+            }]
+        );
+
+        assert_eq!(
+            rule_from_index(&cache, 3, 0, 4),
+            vec![Permutation {
+                set: vec![Word::new([0]), Word::new([1]), Word::new([2])],
+                map: vec![1, 2, 0],
+            }]
+        );
+
+        assert_eq!(
+            rule_from_index(&cache, 3, 0, 5),
+            vec![Permutation {
+                set: vec![Word::new([0]), Word::new([1]), Word::new([2])],
+                map: vec![2, 1, 0],
+            }]
+        );
+
         // all radius 1:
         // - 0 -> 21
         // - 0 -> 12
@@ -177,149 +216,174 @@ mod tests {
         // - 01 -> 21
         // - 01 -> 02
         // - 02 -> 12
+        //
+        // x 6 for each unary operator
 
         assert_eq!(
             rule_from_index(&cache, 3, 1, 0),
-            vec![Permutation {
-                set: vec![],
-                map: vec![]
-            }]
+            vec![
+                Permutation {
+                    set: vec![Word::new([0]), Word::new([1, 2])],
+                    map: vec![1, 0]
+                },
+                Permutation {
+                    set: vec![Word::new([0]), Word::new([1]), Word::new([2])],
+                    map: vec![0, 1, 2],
+                }
+            ]
         );
 
         assert_eq!(
             rule_from_index(&cache, 3, 1, 1),
-            vec![Permutation {
-                set: vec![Word::new([0]), Word::new([1])],
-                map: vec![1, 0]
-            }]
+            vec![
+                Permutation {
+                    set: vec![Word::new([0]), Word::new([2, 1])],
+                    map: vec![1, 0]
+                },
+                Permutation {
+                    set: vec![Word::new([0]), Word::new([1]), Word::new([2])],
+                    map: vec![0, 1, 2],
+                }
+            ]
         );
-
         assert_eq!(
             rule_from_index(&cache, 3, 1, 2),
-            vec![Permutation {
-                set: vec![Word::new([0]), Word::new([1]), Word::new([2])],
-                map: vec![2, 0, 1]
-            }]
+            vec![
+                Permutation {
+                    set: vec![Word::new([1]), Word::new([0, 2])],
+                    map: vec![1, 0]
+                },
+                Permutation {
+                    set: vec![Word::new([0]), Word::new([1]), Word::new([2])],
+                    map: vec![0, 1, 2],
+                }
+            ]
         );
 
         assert_eq!(
             rule_from_index(&cache, 3, 1, 3),
-            vec![Permutation {
-                set: vec![Word::new([0]), Word::new([1]), Word::new([2])],
-                map: vec![1, 2, 0]
-            }]
+            vec![
+                Permutation {
+                    set: vec![Word::new([1]), Word::new([2, 0])],
+                    map: vec![1, 0]
+                },
+                Permutation {
+                    set: vec![Word::new([0]), Word::new([1]), Word::new([2])],
+                    map: vec![0, 1, 2],
+                }
+            ]
         );
 
         assert_eq!(
             rule_from_index(&cache, 3, 1, 4),
-            vec![Permutation {
-                set: vec![Word::new([0]), Word::new([2])],
-                map: vec![1, 0]
-            }]
+            vec![
+                Permutation {
+                    set: vec![Word::new([2]), Word::new([0, 1])],
+                    map: vec![1, 0]
+                },
+                Permutation {
+                    set: vec![Word::new([0]), Word::new([1]), Word::new([2])],
+                    map: vec![0, 1, 2],
+                }
+            ]
         );
 
         assert_eq!(
             rule_from_index(&cache, 3, 1, 5),
-            vec![Permutation {
-                set: vec![Word::new([0]), Word::new([1, 2])],
-                map: vec![1, 0]
-            }]
+            vec![
+                Permutation {
+                    set: vec![Word::new([2]), Word::new([1, 0])],
+                    map: vec![1, 0]
+                },
+                Permutation {
+                    set: vec![Word::new([0]), Word::new([1]), Word::new([2])],
+                    map: vec![0, 1, 2],
+                }
+            ]
         );
 
         assert_eq!(
             rule_from_index(&cache, 3, 1, 6),
-            vec![Permutation {
-                set: vec![Word::new([0]), Word::new([2, 1])],
-                map: vec![1, 0]
-            }]
+            vec![
+                Permutation {
+                    set: vec![Word::new([0, 1]), Word::new([0, 2])],
+                    map: vec![1, 0]
+                },
+                Permutation {
+                    set: vec![Word::new([0]), Word::new([1]), Word::new([2])],
+                    map: vec![0, 1, 2],
+                }
+            ]
         );
 
         assert_eq!(
             rule_from_index(&cache, 3, 1, 7),
-            vec![Permutation {
-                set: vec![Word::new([1]), Word::new([2])],
-                map: vec![1, 0]
-            }]
+            vec![
+                Permutation {
+                    set: vec![Word::new([0, 1]), Word::new([2, 1])],
+                    map: vec![1, 0]
+                },
+                Permutation {
+                    set: vec![Word::new([0]), Word::new([1]), Word::new([2])],
+                    map: vec![0, 1, 2],
+                }
+            ]
         );
 
         assert_eq!(
             rule_from_index(&cache, 3, 1, 8),
-            vec![Permutation {
-                set: vec![Word::new([1]), Word::new([0, 2])],
-                map: vec![1, 0]
-            }]
+            vec![
+                Permutation {
+                    set: vec![Word::new([0, 2]), Word::new([1, 2])],
+                    map: vec![1, 0]
+                },
+                Permutation {
+                    set: vec![Word::new([0]), Word::new([1]), Word::new([2])],
+                    map: vec![0, 1, 2],
+                }
+            ]
         );
 
         assert_eq!(
             rule_from_index(&cache, 3, 1, 9),
-            vec![Permutation {
-                set: vec![Word::new([1]), Word::new([2, 0])],
-                map: vec![1, 0]
-            }]
+            vec![
+                Permutation {
+                    set: vec![Word::new([1, 0]), Word::new([1, 2])],
+                    map: vec![1, 0]
+                },
+                Permutation {
+                    set: vec![Word::new([0]), Word::new([1]), Word::new([2])],
+                    map: vec![0, 1, 2],
+                }
+            ]
         );
 
         assert_eq!(
             rule_from_index(&cache, 3, 1, 10),
-            vec![Permutation {
-                set: vec![Word::new([2]), Word::new([0, 1])],
-                map: vec![1, 0]
-            }]
+            vec![
+                Permutation {
+                    set: vec![Word::new([1, 0]), Word::new([2, 0])],
+                    map: vec![1, 0]
+                },
+                Permutation {
+                    set: vec![Word::new([0]), Word::new([1]), Word::new([2])],
+                    map: vec![0, 1, 2],
+                }
+            ]
         );
 
         assert_eq!(
             rule_from_index(&cache, 3, 1, 11),
-            vec![Permutation {
-                set: vec![Word::new([2]), Word::new([1, 0])],
-                map: vec![1, 0]
-            }]
-        );
-
-        assert_eq!(
-            rule_from_index(&cache, 3, 1, 12),
-            vec![Permutation {
-                set: vec![Word::new([0, 1]), Word::new([0, 2])],
-                map: vec![1, 0]
-            }]
-        );
-
-        assert_eq!(
-            rule_from_index(&cache, 3, 1, 13),
-            vec![Permutation {
-                set: vec![Word::new([0, 1]), Word::new([2, 1])],
-                map: vec![1, 0]
-            }]
-        );
-
-        assert_eq!(
-            rule_from_index(&cache, 3, 1, 14),
-            vec![Permutation {
-                set: vec![Word::new([0, 2]), Word::new([1, 2])],
-                map: vec![1, 0]
-            }]
-        );
-
-        assert_eq!(
-            rule_from_index(&cache, 3, 1, 15),
-            vec![Permutation {
-                set: vec![Word::new([1, 0]), Word::new([1, 2])],
-                map: vec![1, 0]
-            }]
-        );
-
-        assert_eq!(
-            rule_from_index(&cache, 3, 1, 16),
-            vec![Permutation {
-                set: vec![Word::new([1, 0]), Word::new([2, 0])],
-                map: vec![1, 0]
-            }]
-        );
-
-        assert_eq!(
-            rule_from_index(&cache, 3, 1, 17),
-            vec![Permutation {
-                set: vec![Word::new([2, 0]), Word::new([2, 1])],
-                map: vec![1, 0]
-            }]
+            vec![
+                Permutation {
+                    set: vec![Word::new([2, 0]), Word::new([2, 1])],
+                    map: vec![1, 0]
+                },
+                Permutation {
+                    set: vec![Word::new([0]), Word::new([1]), Word::new([2])],
+                    map: vec![0, 1, 2],
+                }
+            ]
         );
     }
 }
