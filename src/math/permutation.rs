@@ -34,6 +34,31 @@ impl Display for Permutation {
     }
 }
 
+pub fn rules_radius(rules: &[Permutation]) -> u32 {
+    let depth = rules.len();
+    let Some(max_word_size) = rules
+        .iter()
+        .flat_map(|perm| perm.set.iter().map(|word| word.len()))
+        .max()
+    else {
+        return 0;
+    };
+
+    if max_word_size == 0 {
+        return 0;
+    }
+
+    depth as u32 * (max_word_size as u32 - 1)
+}
+
+pub fn apply_rules(rules: &[Permutation], mut word: Word) -> Word {
+    for rule in rules {
+        word = rule.apply(&word);
+    }
+
+    word
+}
+
 impl Permutation {
     /// Tries to advance into our reading of each word of the permutation
     /// by the provided letter. If words are interrupted, their progress

@@ -1,4 +1,5 @@
 mod math;
+mod stats;
 mod ui;
 
 use crate::ui::SimpleCGDStatisticsApp;

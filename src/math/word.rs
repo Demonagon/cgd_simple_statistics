@@ -1,6 +1,8 @@
-use std::fmt::Display;
+use std::{fmt::Display, ops::DerefMut};
 
 use smallvec::SmallVec;
+
+use rand::Rng;
 
 /// A word with alphabet size up to 256.
 /// Meant for both words in substitutions and configurations.
@@ -47,6 +49,16 @@ impl Word {
     pub fn new<T: IntoIterator<Item = u8>>(data: T) -> Self {
         Self {
             data: data.into_iter().collect(),
+        }
+    }
+
+    pub fn random<R: Rng>(rng: &mut R, length: u32, alphabet_size: u32) -> Self {
+        Self {
+            data: rng
+                .random_iter::<u8>()
+                .map(|k| k % alphabet_size as u8)
+                .take(length as usize)
+                .collect(),
         }
     }
 

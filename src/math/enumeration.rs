@@ -1,8 +1,8 @@
-use std::collections::{HashMap, btree_map::Range};
+use std::{collections::HashMap, ops::Range};
 
 use crate::math::{cache::DataCache, permutation::Permutation};
 
-fn divisors(n: u32) -> impl Iterator<Item = u32> {
+pub fn divisors(n: u32) -> impl Iterator<Item = u32> {
     (1..=n).filter(move |&k| n.rem_euclid(k) == 0)
 }
 
@@ -50,11 +50,7 @@ pub fn count_rules(cache: &DataCache, alphabet_size: u32, radius: u32) -> u32 {
         .sum()
 }
 
-pub fn all_rule_indexes(
-    cache: &DataCache,
-    alphabet_size: u32,
-    radius: u32,
-) -> impl Iterator<Item = u32> {
+pub fn all_rule_indexes(cache: &DataCache, alphabet_size: u32, radius: u32) -> Range<u32> {
     0..count_rules(cache, alphabet_size, radius)
 }
 
