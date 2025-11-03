@@ -1,4 +1,4 @@
-use std::{fmt::Display, ops::DerefMut};
+use std::fmt::Display;
 
 use smallvec::SmallVec;
 
@@ -40,10 +40,6 @@ impl Ord for Word {
 impl Word {
     pub fn len(&self) -> usize {
         self.data.len()
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.data.is_empty()
     }
 
     pub fn new<T: IntoIterator<Item = u8>>(data: T) -> Self {
