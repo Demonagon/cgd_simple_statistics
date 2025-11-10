@@ -1,6 +1,6 @@
 use std::fmt::Display;
 
-use crate::math::{derangement::permutations, permutation, word::Word};
+use crate::math::{derangement::permutations, word::Word};
 
 use smallvec::{SmallVec, smallvec};
 

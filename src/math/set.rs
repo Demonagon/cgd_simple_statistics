@@ -1,5 +1,3 @@
-use std::io::Write;
-
 use crate::math::word::Word;
 
 fn self_bifix_free_words(alphabet_size: u32, word_size: u32) -> impl Iterator<Item = Word> {

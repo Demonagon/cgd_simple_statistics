@@ -1,4 +1,4 @@
-use std::{collections::HashMap, ops::Range};
+use std::ops::Range;
 
 use crate::math::{cache::DataCache, derangement::factorial, permutation::Permutation};
 
