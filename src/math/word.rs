@@ -48,6 +48,10 @@ impl Word {
         }
     }
 
+    pub fn value_sum(&self) -> u32 {
+        self.data.iter().map(|&k| k as u32).sum()
+    }
+
     pub fn random<R: Rng>(rng: &mut R, length: u32, alphabet_size: u32) -> Self {
         Self {
             data: rng

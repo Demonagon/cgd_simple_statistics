@@ -1,3 +1,5 @@
+use rayon::iter::{IntoParallelIterator, ParallelIterator};
+
 use crate::math::word::Word;
 
 fn self_bifix_free_words(alphabet_size: u32, word_size: u32) -> impl Iterator<Item = Word> {
@@ -67,11 +69,7 @@ pub fn is_sequence_valid(sequence: &[Vec<Word>]) -> bool {
     compare_sets(sequence.first().unwrap(), sequence.last().unwrap()).is_none()
 }
 
-pub fn bifix_free_sets(alphabet_size: u32, max_word_size: u32) -> Vec<Vec<Word>> {
-    let words = (1..=max_word_size)
-        .flat_map(|n| self_bifix_free_words(alphabet_size, n))
-        .collect::<Vec<_>>();
-
+fn compute_bifix_free_sets(words: &[Word]) -> Vec<Vec<Word>> {
     // includes the empty set
     let mut result = vec![vec![]];
 
@@ -117,6 +115,35 @@ pub fn bifix_free_sets(alphabet_size: u32, max_word_size: u32) -> Vec<Vec<Word>>
     }
 
     result
+}
+
+pub fn bifix_free_sets(alphabet_size: u32, max_word_size: u32) -> Vec<Vec<Word>> {
+    let words = (1..=max_word_size)
+        .flat_map(|n| self_bifix_free_words(alphabet_size, n))
+        .collect::<Vec<_>>();
+
+    compute_bifix_free_sets(&words)
+}
+
+pub fn number_conserving_bifix_free_sets(alphabet_size: u32, max_word_size: u32) -> Vec<Vec<Word>> {
+    let words = (1..=max_word_size)
+        .flat_map(|n| self_bifix_free_words(alphabet_size, n))
+        .collect::<Vec<_>>();
+
+    let max_value_sum = words.iter().map(|w| w.value_sum()).max().unwrap();
+
+    let mut sum_sorted_words: Vec<Vec<Word>> = vec![vec![]; max_value_sum as usize + 1];
+
+    for word in words {
+        sum_sorted_words[word.value_sum() as usize].push(word);
+    }
+
+    sum_sorted_words
+        .into_par_iter()
+        .map(|words: Vec<Word>| compute_bifix_free_sets(&words))
+        .flatten()
+        .filter(|set| !set.is_empty())
+        .collect()
 }
 
 #[cfg(test)]
@@ -219,5 +246,29 @@ mod tests {
             ),
             None
         );
+    }
+
+    #[test]
+    fn number_conserving_sets() {
+        let sets = number_conserving_bifix_free_sets(3, 3);
+
+        assert_eq!(sets.len(), 16);
+
+        assert_eq!(sets[0], vec![Word::new([2]), Word::new([0, 1, 1])]);
+        assert_eq!(sets[1], vec![Word::new([2]), Word::new([1, 1, 0])]);
+        assert_eq!(sets[2], vec![Word::new([0, 2]), Word::new([0, 1, 1])]);
+        assert_eq!(sets[3], vec![Word::new([2, 0]), Word::new([1, 1, 0])]);
+        assert_eq!(sets[4], vec![Word::new([0, 0, 2]), Word::new([0, 1, 1])]);
+        assert_eq!(sets[5], vec![Word::new([1, 1, 0]), Word::new([2, 0, 0])]);
+        assert_eq!(sets[6], vec![Word::new([1, 2]), Word::new([1, 0, 2])]);
+        assert_eq!(sets[7], vec![Word::new([2, 1]), Word::new([2, 0, 1])]);
+        assert_eq!(sets[8], vec![Word::new([0, 1, 2]), Word::new([0, 2, 1])]);
+        assert_eq!(sets[9], vec![Word::new([0, 1, 2]), Word::new([1, 0, 2])]);
+        assert_eq!(sets[10], vec![Word::new([0, 2, 1]), Word::new([2, 0, 1])]);
+        assert_eq!(sets[11], vec![Word::new([1, 0, 2]), Word::new([1, 2, 0])]);
+        assert_eq!(sets[12], vec![Word::new([1, 2, 0]), Word::new([2, 1, 0])]);
+        assert_eq!(sets[13], vec![Word::new([2, 0, 1]), Word::new([2, 1, 0])]);
+        assert_eq!(sets[14], vec![Word::new([0, 2, 2]), Word::new([1, 1, 2])]);
+        assert_eq!(sets[15], vec![Word::new([2, 1, 1]), Word::new([2, 2, 0])]);
     }
 }
