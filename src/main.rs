@@ -4,7 +4,7 @@ mod ui;
 
 use crate::{
     math::{cache::DataCache, enumeration::all_rule_indexes},
-    stats::StatisticalParameters,
+    stats::{StatisticalParameters, Statistics},
     ui::SimpleCGDStatisticsApp,
 };
 
@@ -22,15 +22,19 @@ fn main() {
     let mut cache = DataCache::default();
 
     let alphabet_size = 3;
-    let radius = 2;
+    let max_radius = 2;
 
-    cache.precompute_up_to(alphabet_size, radius);
+    cache.precompute_up_to(alphabet_size, max_radius);
 
-    let indexes = all_rule_indexes(&cache, alphabet_size, radius)
-        .take(100000)
-        .collect::<Vec<_>>();
+    let mut stats = Statistics::default();
 
-    let stats = params.compute(&mut cache, alphabet_size, radius, &indexes);
+    for radius in 0..=max_radius {
+        let indexes = all_rule_indexes(&cache, alphabet_size, radius)
+            .take(100000)
+            .collect::<Vec<_>>();
+
+        params.compute(&mut cache, alphabet_size, radius, &indexes, &mut stats);
+    }
 
     println!("stats : {stats:?}");
 

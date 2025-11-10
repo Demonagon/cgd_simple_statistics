@@ -4,7 +4,7 @@ use crate::math::{
     derangement::derangements, set::bifix_free_sets, sum::enumerate_sorted_sums, word::Word,
 };
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct DerangementCache {
     data: HashMap<u32, Vec<Vec<usize>>>,
 }
@@ -27,7 +27,7 @@ impl DerangementCache {
 
 // Each entry contains the sets, of which their biggest word
 // is of that length
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct BifixSetCache {
     // key: (alphabet_size, max_word_size)
     data: HashMap<(u32, u32), Vec<Vec<Word>>>,
@@ -63,7 +63,7 @@ impl BifixSetCache {
     }
 }
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct SumsCache {
     pub sums: HashMap<u32, Vec<Vec<u32>>>,
 }
@@ -77,13 +77,13 @@ impl SumsCache {
 }
 
 /// A structure that holds counts of things, for dynamics programming-based optimisations.
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct PossibilitiesCache {
     // counts how many permutations of one size we can do
     pub permutation_possibilities: HashMap<(u32, u32), u32>,
 }
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct DataCache {
     pub derangements: DerangementCache,
     pub sets: BifixSetCache,

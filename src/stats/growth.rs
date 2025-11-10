@@ -7,10 +7,18 @@ use crate::math::{
 
 use rand::Rng;
 
+#[derive(Copy, Clone, Debug)]
+pub enum GrowthClassification {
+    Growing,
+    NonGrowing,
+    Constant,
+}
+
 #[derive(Copy, Clone, Default, Debug)]
 pub struct GrowthDataPoint {
     pub growing: u32,
     pub non_growing: u32,
+    pub constant_size: u32,
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -37,11 +45,12 @@ pub struct GrowthData {
 }
 
 impl GrowthData {
-    pub fn insert(&mut self, alphabet_size: u32, radius: u32, growing: bool) {
+    pub fn insert(&mut self, alphabet_size: u32, radius: u32, class: GrowthClassification) {
         let data_point = self.data.entry((alphabet_size, radius)).or_default();
-        match growing {
-            true => data_point.growing += 1,
-            false => data_point.non_growing += 1,
+        match class {
+            GrowthClassification::Growing => data_point.growing += 1,
+            GrowthClassification::NonGrowing => data_point.non_growing += 1,
+            GrowthClassification::Constant => data_point.constant_size += 1,
         };
     }
 
@@ -52,6 +61,19 @@ impl GrowthData {
 
         None
     }
+}
+
+pub fn is_rule_constant(rules: &[Permutation]) -> bool {
+    for permutation in rules {
+        // we find consecutive words of different lengths
+        for pair in permutation.set.windows(2) {
+            if pair[0].len() != pair[1].len() {
+                return false;
+            }
+        }
+    }
+
+    true
 }
 
 pub fn is_rule_growing<R: Rng>(
