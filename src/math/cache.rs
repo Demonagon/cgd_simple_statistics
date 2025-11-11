@@ -1,7 +1,10 @@
 use std::collections::HashMap;
 
 use crate::math::{
-    derangement::derangements, set::bifix_free_sets, sum::enumerate_sorted_sums, word::Word,
+    derangement::derangements,
+    set::{bifix_free_sets, number_conserving_bifix_free_sets},
+    sum::enumerate_sorted_sums,
+    word::Word,
 };
 
 #[derive(Default, Debug)]
@@ -41,6 +44,29 @@ impl BifixSetCache {
         self.max_set_size = 0;
 
         let new_sets = bifix_free_sets(alphabet_size, max_word_size);
+
+        for set in new_sets {
+            let max_word_size = set.iter().map(|w| w.len() as u32).max().unwrap_or(0);
+
+            let len = set.len();
+
+            self.data
+                .entry((alphabet_size, max_word_size))
+                .or_default()
+                .push(set);
+
+            if len > self.max_set_size {
+                self.max_set_size = len;
+            }
+        }
+    }
+
+    pub fn precompute_number_conserving(&mut self, alphabet_size: u32, max_word_size: u32) {
+        // we clear the previous results
+        self.data.clear();
+        self.max_set_size = 0;
+
+        let new_sets = number_conserving_bifix_free_sets(alphabet_size, max_word_size);
 
         for set in new_sets {
             let max_word_size = set.iter().map(|w| w.len() as u32).max().unwrap_or(0);
@@ -123,6 +149,16 @@ impl DataCache {
     pub fn precompute_up_to(&mut self, alphabet_size: u32, radius: u32) {
         // the max word size for a given radius is n + 1
         self.sets.precompute(alphabet_size, radius + 1);
+        self.derangements
+            .precompute_up_to(self.sets.max_set_size as u32);
+        self.sums.precompute_up_to(radius);
+        self.precompute_possibilities(alphabet_size);
+    }
+
+    pub fn precompute_number_conserving_up_to(&mut self, alphabet_size: u32, radius: u32) {
+        // the max word size for a given radius is n + 1
+        self.sets
+            .precompute_number_conserving(alphabet_size, radius + 1);
         self.derangements
             .precompute_up_to(self.sets.max_set_size as u32);
         self.sums.precompute_up_to(radius);
