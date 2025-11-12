@@ -1,3 +1,4 @@
+use core::slice::SlicePattern;
 use std::fmt::Display;
 
 use smallvec::SmallVec;
@@ -40,6 +41,10 @@ impl Ord for Word {
 impl Word {
     pub fn len(&self) -> usize {
         self.data.len()
+    }
+
+    pub fn has_prefix(&self, other: &Word) -> bool {
+        self.data.strip_prefix(other.data.as_slice()).is_some()
     }
 
     pub fn new<T: IntoIterator<Item = u8>>(data: T) -> Self {
@@ -103,6 +108,17 @@ mod tests {
         };
 
         assert_eq!("0123", format!("{word}"));
+    }
+
+    #[test]
+    fn prefix() {
+        let a = Word::new([0, 2, 0, 1]);
+        let b = Word::new([0, 2]);
+
+        assert!(a.has_prefix(&b));
+        assert!(!b.has_prefix(&a));
+        assert!(a.has_prefix(&a));
+        assert!(b.has_prefix(&b));
     }
 
     #[test]

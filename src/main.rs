@@ -1,12 +1,11 @@
+#![feature(slice_pattern)]
+
 mod math;
 mod stats;
 mod ui;
 
 use crate::{
-    math::{
-        cache::DataCache,
-        enumeration::{all_number_conserving_rule_indexes, all_rule_indexes},
-    },
+    math::{cache::DataCache, enumeration::all_rule_indexes},
     stats::{StatisticalParameters, Statistics},
     ui::SimpleCGDStatisticsApp,
 };
@@ -25,18 +24,18 @@ fn main() {
     let mut cache = DataCache::default();
 
     let alphabet_size = 3;
-    let max_radius = 4;
+    let max_radius = 3;
 
-    cache.precompute_number_conserving_up_to(alphabet_size, max_radius);
+    cache.precompute_up_to(alphabet_size, max_radius);
 
     let mut stats = Statistics::default();
 
     for radius in 0..=max_radius {
-        let indexes = all_number_conserving_rule_indexes(&cache, alphabet_size, radius)
+        let indexes = all_rule_indexes(&cache, alphabet_size, radius)
             .take(100000)
             .collect::<Vec<_>>();
 
-        params.compute_number_conserving(&mut cache, alphabet_size, radius, &indexes, &mut stats);
+        params.compute(&mut cache, alphabet_size, radius, &indexes, &mut stats);
     }
 
     println!("stats : {stats:?}");
