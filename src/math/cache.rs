@@ -1,7 +1,8 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::RwLock};
 
 use crate::math::{
     derangement::derangements,
+    graph::Graph,
     set::{bifix_free_sets, number_conserving_bifix_free_sets},
     sum::enumerate_sorted_sums,
     word::Word,
@@ -9,12 +10,17 @@ use crate::math::{
 
 #[derive(Default, Debug)]
 pub struct DerangementCache {
-    data: HashMap<u32, Vec<Vec<usize>>>,
+    //data: HashMap<u32, Vec<Vec<usize>>>,
+    data: RwLock<HashMap<u32, Vec<Vec<usize>>>>,
 }
 
 impl DerangementCache {
     fn precompute(&mut self, size: u32) {
-        self.data.entry(size).or_insert_with(|| derangements(size));
+        self.data
+            .write()
+            .expect("Poison error")
+            .entry(size)
+            .or_insert_with(|| derangements(size));
     }
 
     pub fn precompute_up_to(&mut self, max_size: u32) {
@@ -23,8 +29,19 @@ impl DerangementCache {
         }
     }
 
-    pub fn get(&self, size: u32) -> Option<&Vec<Vec<usize>>> {
-        self.data.get(&size)
+    pub fn get(&self, size: u32) -> Vec<Vec<usize>> {
+        //self.data.read().expect("Poison error").get(&size)
+
+        if let Some(value) = self.data.read().expect("Poison error").get(&size) {
+            value.clone()
+        } else {
+            self.data
+                .write()
+                .expect("Poison error")
+                .entry(size)
+                .or_insert(derangements(size))
+                .clone()
+        }
     }
 }
 
@@ -113,6 +130,7 @@ pub struct PossibilitiesCache {
 pub struct DataCache {
     pub derangements: DerangementCache,
     pub sets: BifixSetCache,
+    //pub bifix_free_graph: Graph<Word>,
     pub sums: SumsCache,
     pub possibilities: PossibilitiesCache,
 }
@@ -127,8 +145,7 @@ impl DataCache {
             }
 
             for set in sets {
-                let possible_derangements =
-                    self.derangements.get(set.len() as u32).unwrap().len() as u32;
+                let possible_derangements = self.derangements.get(set.len() as u32).len() as u32;
 
                 *self
                     .possibilities
@@ -149,8 +166,8 @@ impl DataCache {
     pub fn precompute_up_to(&mut self, alphabet_size: u32, radius: u32) {
         // the max word size for a given radius is n + 1
         self.sets.precompute(alphabet_size, radius + 1);
-        self.derangements
-            .precompute_up_to(self.sets.max_set_size as u32);
+        // self.derangements
+        //     .precompute_up_to(self.sets.max_set_size as u32);
         self.sums.precompute_up_to(radius);
         self.precompute_possibilities(alphabet_size);
     }
@@ -159,8 +176,8 @@ impl DataCache {
         // the max word size for a given radius is n + 1
         self.sets
             .precompute_number_conserving(alphabet_size, radius + 1);
-        self.derangements
-            .precompute_up_to(self.sets.max_set_size as u32);
+        // self.derangements
+        //     .precompute_up_to(self.sets.max_set_size as u32);
         self.sums.precompute_up_to(radius);
         self.precompute_possibilities(alphabet_size);
     }

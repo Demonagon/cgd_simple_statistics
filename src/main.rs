@@ -24,7 +24,7 @@ fn main() {
     let mut cache = DataCache::default();
 
     let alphabet_size = 3;
-    let max_radius = 3;
+    let max_radius = 2;
 
     cache.precompute_up_to(alphabet_size, max_radius);
 

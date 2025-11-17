@@ -1,6 +1,7 @@
+use rand::{rngs::ThreadRng, seq::IndexedRandom};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 
-use crate::math::word::Word;
+use crate::math::{graph::Graph, word::Word};
 
 fn self_bifix_free_words(alphabet_size: u32, word_size: u32) -> impl Iterator<Item = Word> {
     let count = alphabet_size.pow(word_size);
@@ -115,6 +116,35 @@ fn compute_bifix_free_sets(words: &[Word]) -> Vec<Vec<Word>> {
     }
 
     result
+}
+
+pub fn sample_bifix_free_set(
+    word_graph: &Graph<Word>,
+    rng: &mut ThreadRng,
+    initial_words: &[usize],
+) -> Vec<Word> {
+    let mut clique: Vec<usize> = vec![];
+
+    let Some(&initial_index) = initial_words.choose(rng) else {
+        return vec![];
+    };
+
+    clique.push(initial_index);
+
+    loop {
+        let neighbors = word_graph.shared_neigbhors(&clique);
+
+        let Some(&new_index) = neighbors.choose(rng) else {
+            break;
+        };
+
+        clique.push(new_index);
+    }
+
+    clique
+        .iter()
+        .map(|&k| word_graph.get(k).expect("Error in set sampling").clone())
+        .collect()
 }
 
 pub fn bifix_free_sets(alphabet_size: u32, max_word_size: u32) -> Vec<Vec<Word>> {

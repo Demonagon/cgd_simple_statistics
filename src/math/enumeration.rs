@@ -109,7 +109,7 @@ pub fn rule_from_index(
         // for each set we tabulate the number of derangements that match
         let possibilities = sets
             .iter()
-            .map(|s| cache.derangements.get(s.len() as u32).unwrap().len() as u32)
+            .map(|s| cache.derangements.get(s.len() as u32).len() as u32)
             .collect::<Vec<_>>();
 
         let total_possibilities: u32 = possibilities.iter().sum();
@@ -124,12 +124,7 @@ pub fn rule_from_index(
         }
 
         let set = sets[index].clone();
-        let map = cache
-            .derangements
-            .get(set.len() as u32)
-            .expect("Please precompute derangements before generating rules from indexes")
-            [sub_number as usize]
-            .clone();
+        let map = cache.derangements.get(set.len() as u32)[sub_number as usize].clone();
 
         result.push(Permutation { set, map });
     }
@@ -184,7 +179,7 @@ pub fn number_conserving_rule_from_index(
         // for each set we tabulate the number of derangements that match
         let possibilities = sets
             .iter()
-            .map(|s| cache.derangements.get(s.len() as u32).unwrap().len() as u32)
+            .map(|s| cache.derangements.get(s.len() as u32).len() as u32)
             .collect::<Vec<_>>();
 
         let total_possibilities: u32 = possibilities.iter().sum();
@@ -199,12 +194,7 @@ pub fn number_conserving_rule_from_index(
         }
 
         let set = sets[index].clone();
-        let map = cache
-            .derangements
-            .get(set.len() as u32)
-            .expect("Please precompute derangements before generating rules from indexes")
-            [sub_number as usize]
-            .clone();
+        let map = cache.derangements.get(set.len() as u32)[sub_number as usize].clone();
 
         result.push(Permutation { set, map });
     }

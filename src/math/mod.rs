@@ -1,6 +1,7 @@
 pub mod cache;
 pub mod derangement;
 pub mod enumeration;
+pub mod graph;
 pub mod permutation;
 pub mod set;
 pub mod sum;
