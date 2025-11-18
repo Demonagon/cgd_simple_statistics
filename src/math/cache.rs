@@ -2,7 +2,6 @@ use std::{collections::HashMap, sync::RwLock};
 
 use crate::math::{
     derangement::derangements,
-    graph::Graph,
     set::{bifix_free_sets, number_conserving_bifix_free_sets},
     sum::enumerate_sorted_sums,
     word::Word,
@@ -130,7 +129,6 @@ pub struct PossibilitiesCache {
 pub struct DataCache {
     pub derangements: DerangementCache,
     pub sets: BifixSetCache,
-    //pub bifix_free_graph: Graph<Word>,
     pub sums: SumsCache,
     pub possibilities: PossibilitiesCache,
 }
@@ -166,18 +164,21 @@ impl DataCache {
     pub fn precompute_up_to(&mut self, alphabet_size: u32, radius: u32) {
         // the max word size for a given radius is n + 1
         self.sets.precompute(alphabet_size, radius + 1);
-        // self.derangements
-        //     .precompute_up_to(self.sets.max_set_size as u32);
+        self.derangements
+            .precompute_up_to(self.sets.max_set_size as u32);
         self.sums.precompute_up_to(radius);
         self.precompute_possibilities(alphabet_size);
+        // self.bifix_free_graph = compute_words_graph(
+        //     &self_bifix_free_words(alphabet_size, radius + 1).collect::<Vec<_>>(),
+        // );
     }
 
     pub fn precompute_number_conserving_up_to(&mut self, alphabet_size: u32, radius: u32) {
         // the max word size for a given radius is n + 1
         self.sets
             .precompute_number_conserving(alphabet_size, radius + 1);
-        // self.derangements
-        //     .precompute_up_to(self.sets.max_set_size as u32);
+        self.derangements
+            .precompute_up_to(self.sets.max_set_size as u32);
         self.sums.precompute_up_to(radius);
         self.precompute_possibilities(alphabet_size);
     }

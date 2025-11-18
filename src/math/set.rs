@@ -1,9 +1,9 @@
-use rand::{rngs::ThreadRng, seq::IndexedRandom};
+use rand::{Rng, seq::IndexedRandom};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 
 use crate::math::{graph::Graph, word::Word};
 
-fn self_bifix_free_words(alphabet_size: u32, word_size: u32) -> impl Iterator<Item = Word> {
+pub fn self_bifix_free_words(alphabet_size: u32, word_size: u32) -> impl Iterator<Item = Word> {
     let count = alphabet_size.pow(word_size);
 
     (0..count)
@@ -18,6 +18,20 @@ fn self_bifix_free_words(alphabet_size: u32, word_size: u32) -> impl Iterator<It
             Word::new(result.data.into_iter().rev())
         })
         .filter(|word| word.is_self_bifix_free())
+}
+
+pub fn compute_words_graph(words: &[Word]) -> Graph<Word> {
+    let mut result = Graph::new_ordered_from_slice(words);
+
+    for i in 0..result.len() {
+        for j in (i + 1)..result.len() {
+            if result[i].is_bifix_free_with(&result[j]) {
+                result.push_edge(i, j);
+            }
+        }
+    }
+
+    result
 }
 
 fn can_include(word: &Word, set: &[Word]) -> bool {
@@ -120,7 +134,7 @@ fn compute_bifix_free_sets(words: &[Word]) -> Vec<Vec<Word>> {
 
 pub fn sample_bifix_free_set(
     word_graph: &Graph<Word>,
-    rng: &mut ThreadRng,
+    rng: &mut impl Rng,
     initial_words: &[usize],
 ) -> Vec<Word> {
     let mut clique: Vec<usize> = vec![];

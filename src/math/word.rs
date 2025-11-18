@@ -1,4 +1,3 @@
-use core::slice::SlicePattern;
 use std::fmt::Display;
 
 use smallvec::SmallVec;

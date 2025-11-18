@@ -1,11 +1,15 @@
+use std::{collections::HashMap, ops::Index};
+
+use rand::{Rng, seq::IndexedRandom};
 use smallvec::{SmallVec, smallvec};
+
+use crate::math::word::Word;
 
 const EDGES_CAPACITY: usize = 32;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Graph<T> {
     values: Vec<T>,
-
     edges: Vec<SmallVec<[usize; EDGES_CAPACITY]>>,
 }
 
@@ -103,8 +107,68 @@ impl<T> Graph<T> {
     }
 }
 
+impl<T: Ord + Clone> Graph<T> {
+    pub fn new_ordered_from_slice(slice: &[T]) -> Self {
+        let mut values = Vec::from(slice);
+
+        values.sort_unstable();
+
+        Graph {
+            values,
+            edges: vec![Default::default(); slice.len()],
+        }
+    }
+}
+
+impl<T> Index<usize> for Graph<T> {
+    type Output = T;
+
+    fn index(&self, index: usize) -> &Self::Output {
+        &self.values[index]
+    }
+}
+
+impl Graph<Word> {
+    /// Assumes that the words contained in the graph are in order.
+    /// Computes and returns a vec of indexes corresponding to each
+    /// size of words. Excludes nodes which do not have neibhbors;
+    /// we use these vecs to generate cliques of size at least 2.
+    pub fn word_size_ranges(&self) -> HashMap<u32, Vec<usize>> {
+        let mut result = HashMap::<u32, Vec<usize>>::default();
+
+        for k in 0..self.len() {
+            if self.edges[k].is_empty() {
+                continue;
+            }
+
+            result.entry(self[k].len() as u32).or_default().push(k);
+        }
+
+        result
+    }
+}
+
+impl<T> Graph<T> {
+    pub fn sample_clique(&self, starting_index: usize, rng: &mut impl Rng) -> Vec<usize> {
+        let mut result = vec![starting_index];
+
+        loop {
+            let candidates = self.shared_neigbhors(&result);
+            match candidates.choose(rng) {
+                Some(&index) => result.push(index),
+                None => break,
+            }
+        }
+
+        result.sort_unstable();
+
+        result
+    }
+}
+
 #[cfg(test)]
 mod tests {
+
     use super::*;
 
     #[test]
@@ -170,5 +234,64 @@ mod tests {
 
         let neighbors: SmallVec<[usize; EDGES_CAPACITY]> = smallvec![0, 1, 2];
         assert_eq!(graph.shared_neigbhors(&[3, 4]), neighbors);
+    }
+
+    #[test]
+    fn test_ordered_ranges() {
+        // this will be a graph defined by the subset relation
+        let mut graph = Graph::new_ordered_from_slice(&[
+            Word::new([0, 1]),
+            Word::new([0]),
+            Word::new([1]),
+            Word::new([2, 3]),
+            Word::new([1, 2, 3]),
+            Word::new([4]),
+        ]);
+
+        assert_eq!(
+            graph.values,
+            vec![
+                Word::new([0]),
+                Word::new([1]),
+                Word::new([4]),
+                Word::new([0, 1]),
+                Word::new([2, 3]),
+                Word::new([1, 2, 3]),
+            ]
+        );
+
+        graph.push_edge(0, 3);
+        graph.push_edge(1, 3);
+        graph.push_edge(1, 5);
+        graph.push_edge(4, 5);
+
+        let mut ranges = HashMap::new();
+
+        ranges.insert(1, vec![0, 1]);
+        ranges.insert(2, vec![3, 4]);
+        ranges.insert(3, vec![5]);
+
+        assert_eq!(graph.word_size_ranges(), ranges);
+    }
+
+    #[test]
+    fn test_clique() {
+        let mut graph = Graph::default();
+
+        graph.push("a");
+        graph.push("b");
+        graph.push("c");
+        graph.push("d");
+
+        graph.push_edge(0, 1);
+        graph.push_edge(0, 2);
+        graph.push_edge(1, 2);
+
+        let mut rng = rand::rng();
+
+        assert_eq!(graph.sample_clique(0, &mut rng), vec![0, 1, 2]);
+        assert_eq!(graph.sample_clique(1, &mut rng), vec![0, 1, 2]);
+        assert_eq!(graph.sample_clique(2, &mut rng), vec![0, 1, 2]);
+        assert_eq!(graph.sample_clique(3, &mut rng), vec![3]);
     }
 }

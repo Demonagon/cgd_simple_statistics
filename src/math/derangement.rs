@@ -1,3 +1,5 @@
+use rand::{Rng, seq::SliceRandom};
+
 pub fn factorial(k: u32) -> u32 {
     if k <= 1 { 1 } else { k * factorial(k - 1) }
 }
@@ -24,6 +26,14 @@ fn permutation(k: u32, write_to: &mut [usize]) {
             *v += 1
         }
     });
+}
+
+pub fn sample_permutation(size: u32, rng: &mut impl Rng) -> Vec<usize> {
+    let mut result = (0..size as usize).collect::<Vec<_>>();
+
+    result.shuffle(rng);
+
+    result
 }
 
 pub fn permutations(size: u32) -> Vec<Vec<usize>> {

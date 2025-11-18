@@ -1,4 +1,5 @@
 #![feature(slice_pattern)]
+#![allow(dead_code)]
 
 mod math;
 mod stats;
