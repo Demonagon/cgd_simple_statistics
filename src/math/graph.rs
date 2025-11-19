@@ -137,7 +137,9 @@ impl Graph<Word> {
         let mut result = HashMap::<u32, Vec<usize>>::default();
 
         for k in 0..self.len() {
-            if self.edges[k].is_empty() {
+            let size = self[k].len();
+
+            if self.edges[k].iter().all(|&n| self[n].len() > size) {
                 continue;
             }
 
@@ -146,14 +148,19 @@ impl Graph<Word> {
 
         result
     }
-}
 
-impl<T> Graph<T> {
     pub fn sample_clique(&self, starting_index: usize, rng: &mut impl Rng) -> Vec<usize> {
         let mut result = vec![starting_index];
 
+        // the starting size has to be the maximum size
+        let starting_size = self[starting_index].len();
+
         loop {
-            let candidates = self.shared_neigbhors(&result);
+            let candidates = self
+                .shared_neigbhors(&result)
+                .into_iter()
+                .filter(|&c| self[c].len() <= starting_size)
+                .collect::<SmallVec<[usize; EDGES_CAPACITY]>>();
             match candidates.choose(rng) {
                 Some(&index) => result.push(index),
                 None => break,
@@ -267,8 +274,7 @@ mod tests {
 
         let mut ranges = HashMap::new();
 
-        ranges.insert(1, vec![0, 1]);
-        ranges.insert(2, vec![3, 4]);
+        ranges.insert(2, vec![3]);
         ranges.insert(3, vec![5]);
 
         assert_eq!(graph.word_size_ranges(), ranges);
@@ -278,10 +284,10 @@ mod tests {
     fn test_clique() {
         let mut graph = Graph::default();
 
-        graph.push("a");
-        graph.push("b");
-        graph.push("c");
-        graph.push("d");
+        graph.push(Word::new([0]));
+        graph.push(Word::new([1]));
+        graph.push(Word::new([2]));
+        graph.push(Word::new([3]));
 
         graph.push_edge(0, 1);
         graph.push_edge(0, 2);

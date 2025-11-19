@@ -6,7 +6,7 @@ mod stats;
 mod ui;
 
 use crate::{
-    math::{cache::DataCache, enumeration::all_rule_indexes},
+    math::{cache::DataCache, enumeration::all_rule_indexes, sampling::SamplingDataCache},
     stats::{StatisticalParameters, Statistics},
     ui::SimpleCGDStatisticsApp,
 };
@@ -22,28 +22,48 @@ fn main() {
         },
     };
 
-    let mut cache = DataCache::default();
+    let alphabet_size = 4;
+    let max_radius = 5;
 
-    let alphabet_size = 3;
-    let max_radius = 2;
+    let mut sample_cache = SamplingDataCache::default();
+    sample_cache.precompute_up_to(alphabet_size, max_radius);
 
-    cache.precompute_up_to(alphabet_size, max_radius);
+    // let mut rng = rand::rng();
+    // for _k in 0..10 {
+    //     println!("=============");
+    //     for perm in sample_cache.sample_rule(max_radius, &mut rng) {
+    //         println!("[{perm}]");
+    //     }
+    // }
+    // println!("=============");
+
+    // let mut cache = DataCache::default();
+
+    // cache.precompute_up_to(alphabet_size, max_radius);
 
     let mut stats = Statistics::default();
 
     for radius in 0..=max_radius {
-        let indexes = all_rule_indexes(&cache, alphabet_size, radius)
-            .take(100000)
-            .collect::<Vec<_>>();
+        //     let indexes = all_rule_indexes(&cache, alphabet_size, radius)
+        //         .take(100000)
+        //         .collect::<Vec<_>>();
 
-        params.compute(&mut cache, alphabet_size, radius, &indexes, &mut stats);
+        //     params.compute(&mut cache, alphabet_size, radius, &indexes, &mut stats);
+        params.sample(&sample_cache, alphabet_size, radius, 10000, &mut stats);
     }
 
-    println!("stats : {stats:?}");
+    let mut data = stats.growth.data.into_iter().collect::<Vec<_>>();
+    data.sort_by(|(a, _), (b, _)| a.cmp(b));
 
-    _ = eframe::run_native(
-        "Simple CGD Statistics",
-        native_options,
-        Box::new(|_cc| Ok(Box::new(SimpleCGDStatisticsApp::default()))),
-    );
+    for (radius, point) in data {
+        println!("alphabet_size, radius {radius:?} :");
+        println!("{point:?}");
+        println!("{}%", point.growing_proportion().unwrap_or(0.0) * 100.0);
+    }
+
+    // _ = eframe::run_native(
+    //     "Simple CGD Statistics",
+    //     native_options,
+    //     Box::new(|_cc| Ok(Box::new(SimpleCGDStatisticsApp::default()))),
+    // );
 }

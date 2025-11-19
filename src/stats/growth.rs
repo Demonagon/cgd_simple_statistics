@@ -41,7 +41,7 @@ impl GrowthDataPoint {
 #[derive(Debug, Clone, Default)]
 pub struct GrowthData {
     // order : alphabet_size, radius
-    data: HashMap<(u32, u32), GrowthDataPoint>,
+    pub data: HashMap<(u32, u32), GrowthDataPoint>,
 }
 
 impl GrowthData {

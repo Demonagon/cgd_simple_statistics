@@ -93,6 +93,20 @@ impl Word {
     pub fn is_self_bifix_free(&self) -> bool {
         self.is_bifix_free_with(self)
     }
+
+    pub fn shared_prefix(&self, other: &Self) -> Self {
+        let mut result = Word::new([]);
+
+        for k in 0..self.len().min(other.len()) {
+            if self.data[k] == other.data[k] {
+                result.data.push(self.data[k]);
+            } else {
+                break;
+            }
+        }
+
+        result
+    }
 }
 
 #[cfg(test)]
@@ -196,6 +210,24 @@ mod tests {
                 data: smallvec![1, 1, 0, 0, 0, 1, 1, 0, 0, 0]
             }
             .is_self_bifix_free()
+        );
+    }
+
+    #[test]
+    fn test_shared_prefix() {
+        assert_eq!(
+            Word::new([0, 1, 2]).shared_prefix(&Word::new([0, 1])),
+            Word::new([0, 1])
+        );
+
+        assert_eq!(
+            Word::new([0, 5, 4, 3, 0, 1]).shared_prefix(&Word::new([0, 5, 4, 2, 1, 4])),
+            Word::new([0, 5, 4])
+        );
+
+        assert_eq!(
+            Word::new([0, 1, 2]).shared_prefix(&Word::new([2])),
+            Word::new([])
         );
     }
 }

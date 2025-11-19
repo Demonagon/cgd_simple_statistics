@@ -3,6 +3,7 @@ use crate::{
         cache::DataCache,
         enumeration::{number_conserving_rule_from_index, rule_from_index},
         permutation::rules_radius,
+        sampling::SamplingDataCache,
     },
     stats::growth::{
         GrowthClassification, GrowthData, GrowthParameters, is_rule_constant, is_rule_growing,
@@ -46,6 +47,45 @@ impl StatisticalParameters {
                 let classification = if is_rule_constant(&r) {
                     GrowthClassification::Constant
                 } else if is_rule_growing(&self.growth, &mut rng, alphabet_size, &r) {
+                    GrowthClassification::Growing
+                } else {
+                    GrowthClassification::NonGrowing
+                };
+
+                (rule_radius, classification)
+            })
+            .collect::<Vec<_>>();
+
+        for (radius, class) in is_growing {
+            statistics.growth.insert(alphabet_size, radius, class);
+        }
+    }
+
+    pub fn sample(
+        &self,
+        cache: &SamplingDataCache,
+        alphabet_size: u32,
+        radius: u32,
+        count: u32,
+        statistics: &mut Statistics,
+    ) {
+        // we create an iterator that goes in parallel
+        // for each rule, we do checks depending on the statistics
+        // growth statistics run X configuration of size Y, for Z steps, and if one of them
+        // goes 2x on size, the rule is considered growing
+
+        let is_growing = (0..count)
+            .into_par_iter()
+            .map(|_| {
+                let mut rng = rand::rng();
+
+                let rule = cache.sample_rule(radius, &mut rng);
+
+                let rule_radius = rules_radius(&rule);
+
+                let classification = if is_rule_constant(&rule) {
+                    GrowthClassification::Constant
+                } else if is_rule_growing(&self.growth, &mut rng, alphabet_size, &rule) {
                     GrowthClassification::Growing
                 } else {
                     GrowthClassification::NonGrowing

@@ -22,13 +22,24 @@ impl SamplingDataCache {
     pub fn precompute_up_to(&mut self, alphabet_size: u32, radius: u32) {
         // the max word size for a given radius is n + 1
         self.sums.precompute_up_to(radius);
-        self.bifix_free_graph = compute_words_graph(
-            &self_bifix_free_words(alphabet_size, radius + 1).collect::<Vec<_>>(),
-        );
+
+        let mut words = vec![];
+
+        for r in 0..=radius {
+            words.extend(self_bifix_free_words(alphabet_size, r + 1));
+        }
+
+        self.bifix_free_graph = compute_words_graph(&words);
         self.graph_ranges = self.bifix_free_graph.word_size_ranges();
 
-        // TODO do a step to exclude sums from self.sums when it contains a radius
+        // we do a step to exclude sums from self.sums when it contains a radius
         // the word size of which has no initial index in self.graph_ranges
+
+        for sums in self.sums.sums.values_mut() {
+            sums.retain(|values| values.iter().all(|k| self.graph_ranges.contains_key(k)));
+        }
+
+        //self.sums.sums.retain(|_, sums| !sums.is_empty());
     }
 
     pub fn sample_rule(&self, radius: u32, rng: &mut impl Rng) -> Vec<Permutation> {
