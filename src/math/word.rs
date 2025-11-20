@@ -66,6 +66,19 @@ impl Word {
         }
     }
 
+    pub fn has_prefix_in_suffixes_of(&self, other: &Word) -> bool {
+        let min_offset = (other.len() as isize - self.len() as isize).max(0) as usize;
+        let max_offset = other.len() - 1;
+
+        for offset in min_offset..=max_offset {
+            if self.data[0..other.len() - offset] == other.data[offset..other.len()] {
+                return true;
+            }
+        }
+
+        false
+    }
+
     pub fn is_bifix_free_with(&self, other: &Word) -> bool {
         let self_size = self.data.len();
         let other_size = other.data.len();
@@ -132,6 +145,19 @@ mod tests {
         assert!(!b.has_prefix(&a));
         assert!(a.has_prefix(&a));
         assert!(b.has_prefix(&b));
+    }
+
+    #[test]
+    fn inclusion() {
+        assert!(!Word::new([0, 1]).is_bifix_free_with(&Word::new([2, 0, 1, 3])))
+    }
+
+    #[test]
+    fn prefix_suffix() {
+        assert!(Word::new([0, 1, 2]).has_prefix_in_suffixes_of(&Word::new([1, 2, 0])));
+        assert!(Word::new([1, 2, 0]).has_prefix_in_suffixes_of(&Word::new([0, 1, 2])));
+        assert!(Word::new([1, 2, 0]).has_prefix_in_suffixes_of(&Word::new([1, 2, 0])));
+        assert!(!Word::new([1, 2, 0]).has_prefix_in_suffixes_of(&Word::new([2, 2, 0])));
     }
 
     #[test]

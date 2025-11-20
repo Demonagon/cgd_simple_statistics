@@ -262,6 +262,12 @@ mod tests {
 
     #[test]
     fn test_enumeration() {
+        for set in bifix_free_sets(2, 5) {
+            for word in set {
+                print!("{word} ");
+            }
+            println!();
+        }
         assert_eq!(bifix_free_sets(2, 5).len(), 14);
         assert_eq!(bifix_free_sets(3, 2).len(), 17);
     }
