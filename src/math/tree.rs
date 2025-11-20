@@ -1,20 +1,53 @@
-use std::num::NonZeroU32;
+use smallvec::{SmallVec, smallvec};
 
 use crate::math::word::Word;
 
+const NODE_CAPACITY: usize = 8;
+
 #[derive(PartialEq, Eq, Clone, Debug)]
-pub struct Node<const ALPHABET_SIZE: usize> {
+pub struct Node {
     included: bool,
     prefix: Vec<u8>,
-    children: [Option<NonZeroU32>; ALPHABET_SIZE],
+    children: SmallVec<[Option<usize>; NODE_CAPACITY]>,
 }
 
-#[derive(PartialEq, Eq, Default, Clone, Debug)]
-pub struct Tree<const ALPHABET_SIZE: usize> {
-    nodes: Vec<Node<ALPHABET_SIZE>>,
+impl Node {
+    fn first_child(&self) -> Option<usize> {
+        for child in &self.children {
+            if child.is_some() {
+                return *child;
+            }
+        }
+
+        None
+    }
+    fn next_child_after(&self, previous: u8) -> Option<usize> {
+        for k in (previous as usize + 1)..self.children.len() {
+            let child = self.children[k];
+
+            if child.is_some() {
+                return child;
+            }
+        }
+
+        None
+    }
 }
 
-impl<const ALPHABET_SIZE: usize> Tree<ALPHABET_SIZE> {
+#[derive(PartialEq, Eq, Clone, Debug)]
+pub struct Tree {
+    alphabet_size: usize,
+    nodes: Vec<Node>,
+}
+
+impl Tree {
+    pub fn new(alphabet_size: usize) -> Self {
+        Self {
+            alphabet_size,
+            nodes: vec![],
+        }
+    }
+
     fn insert_at(&mut self, index: usize, word: &[u8]) {
         match word.strip_prefix(self.nodes[index].prefix.as_slice()) {
             Some(suffix) => {
@@ -29,23 +62,20 @@ impl<const ALPHABET_SIZE: usize> Tree<ALPHABET_SIZE> {
                 match self.nodes[index].children[*initial as usize] {
                     Some(child_index) => {
                         // we continue our exploration
-                        self.insert_at(child_index.get() as usize, suffix);
+                        self.insert_at(child_index, suffix);
                     }
                     None => {
                         // we reserve a new index
                         let new_index = self.nodes.len();
 
                         // we insert the new index
-                        self.nodes[index].children[*initial as usize] = Some(
-                            NonZeroU32::new(new_index as u32)
-                                .expect("len() can't be 0 if the match block doesn't panic"),
-                        );
+                        self.nodes[index].children[*initial as usize] = Some(new_index);
 
                         // we create a new node
                         self.nodes.push(Node {
                             included: true,
                             prefix: Vec::from(suffix),
-                            children: [None; ALPHABET_SIZE],
+                            children: smallvec![None; self.alphabet_size],
                         })
                     }
                 }
@@ -78,23 +108,23 @@ impl<const ALPHABET_SIZE: usize> Tree<ALPHABET_SIZE> {
                         self.nodes.push(Node {
                             included: true,
                             prefix: Vec::from(node_suffix),
-                            children: self.nodes[index].children,
+                            children: self.nodes[index].children.clone(),
                         });
                         self.nodes.push(Node {
                             included: true,
                             prefix: Vec::from(word_suffix),
-                            children: [None; ALPHABET_SIZE],
+                            children: smallvec![None; self.alphabet_size],
                         });
 
                         // the current node will now contain that shared prefix
                         self.nodes[index].prefix = Vec::from(shared_prefix.data.as_slice());
                         // it is not a word itself
                         self.nodes[index].included = false;
-                        self.nodes[index].children = [None; ALPHABET_SIZE];
+                        self.nodes[index].children = smallvec![None; self.alphabet_size];
                         self.nodes[index].children[word_first_letter as usize] =
-                            Some(NonZeroU32::new(new_word_index as u32).unwrap());
+                            Some(new_word_index);
                         self.nodes[index].children[node_first_letter as usize] =
-                            Some(NonZeroU32::new(new_node_index as u32).unwrap());
+                            Some(new_node_index);
 
                         return;
                     };
@@ -116,17 +146,14 @@ impl<const ALPHABET_SIZE: usize> Tree<ALPHABET_SIZE> {
                 self.nodes.push(Node {
                     included: true,
                     prefix: suffix,
-                    children: self.nodes[index].children,
+                    children: self.nodes[index].children.clone(),
                 });
 
                 // we remove all the moved children
-                self.nodes[index].children = [None; ALPHABET_SIZE];
+                self.nodes[index].children = smallvec![None; self.alphabet_size];
 
                 // we insert the new index
-                self.nodes[index].children[initial as usize] = Some(
-                    NonZeroU32::new(new_index as u32)
-                        .expect("len() can't be 0 if the match block doesn't panic"),
-                );
+                self.nodes[index].children[initial as usize] = Some(new_index);
             }
         };
     }
@@ -136,7 +163,7 @@ impl<const ALPHABET_SIZE: usize> Tree<ALPHABET_SIZE> {
             self.nodes.push(Node {
                 included: true,
                 prefix: Vec::from(word.data.as_slice()),
-                children: [None; ALPHABET_SIZE],
+                children: smallvec![None; self.alphabet_size],
             });
         } else {
             self.insert_at(0, &word.data);
@@ -144,20 +171,131 @@ impl<const ALPHABET_SIZE: usize> Tree<ALPHABET_SIZE> {
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
-pub struct TreeIterator<'a, const ALPHABET_SIZE: usize> {
-    tree: &'a Tree<ALPHABET_SIZE>,
-    current_word: Word,
-    current_index: usize,
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+enum TreeIteratorState {
+    Up,
+    Down(u8),
+    End,
 }
 
-impl<'a, const ALPHABET_SIZE: usize> Iterator for TreeIterator<'a, ALPHABET_SIZE> {
-    type Item = &'a Word;
+#[derive(Debug, PartialEq, Eq)]
+pub struct TreeIterator<'a> {
+    tree: &'a Tree,
+    current_word: Word,
+    index_stack: Vec<usize>,
+    state: TreeIteratorState,
+}
+
+impl<'a> TreeIterator<'a> {
+    fn new(tree: &'a Tree) -> Self {
+        Self {
+            tree,
+            current_word: Word::default(),
+            index_stack: vec![0],
+            state: TreeIteratorState::Up,
+        }
+    }
+
+    fn walk_to_next_word(&mut self) -> Option<()> {
+        if self.tree.nodes.is_empty() {
+            return None;
+        }
+
+        loop {
+            match self.state {
+                TreeIteratorState::Up => {
+                    let &current_index = self
+                        .index_stack
+                        .last()
+                        .expect("No current index going up in tree iterator");
+
+                    self.current_word
+                        .data
+                        .extend(self.tree.nodes[current_index].prefix.iter().copied());
+
+                    match self.tree.nodes[current_index].first_child() {
+                        Some(index) => {
+                            self.state = TreeIteratorState::Up;
+                            self.index_stack.push(index);
+                        }
+                        None => {
+                            match self.tree.nodes[current_index].prefix.first() {
+                                Some(&letter) => {
+                                    self.state = TreeIteratorState::Down(letter);
+                                }
+                                None => {
+                                    // Empty prefix is possible at the root
+                                    // in which case the process ends
+                                    self.state = TreeIteratorState::End;
+                                }
+                            };
+                        }
+                    }
+
+                    if self.tree.nodes[current_index].included {
+                        return Some(());
+                    }
+                }
+                TreeIteratorState::Down(letter) => {
+                    let child_index = self
+                        .index_stack
+                        .pop()
+                        .expect("Going down with no index in stack");
+
+                    let Some(&parent_index) = self.index_stack.last() else {
+                        // No parent, implies we are trying to go down
+                        // from the root.
+                        return None;
+                    };
+
+                    self.current_word.data = self
+                        .current_word
+                        .data
+                        .strip_suffix(self.tree.nodes[child_index].prefix.as_slice())
+                        .expect("Removing child prefix wasnt possible")
+                        .into();
+
+                    match self.tree.nodes[parent_index].next_child_after(letter) {
+                        Some(next_child_index) => {
+                            self.index_stack.push(next_child_index);
+                            self.state = TreeIteratorState::Up;
+                        }
+                        None => {
+                            // we chain down
+                            match self.tree.nodes[parent_index].prefix.first() {
+                                Some(&letter) => {
+                                    self.state = TreeIteratorState::Down(letter);
+                                }
+                                None => {
+                                    // Empty prefix is possible at the root
+                                    // in which case the process ends
+                                    return None;
+                                }
+                            };
+                        }
+                    };
+                }
+                TreeIteratorState::End => {
+                    return None;
+                }
+            }
+        }
+    }
+}
+
+impl<'a> Iterator for TreeIterator<'a> {
+    type Item = Word;
 
     fn next(&mut self) -> Option<Self::Item> {
-        // we have to walk the tree...
-        // we need to keep track of the next path somehow
-        todo!()
+        self.walk_to_next_word()?;
+
+        Some(self.current_word.clone())
+    }
+}
+
+impl Tree {
+    pub fn iter<'a>(&'a self) -> TreeIterator<'a> {
+        TreeIterator::new(self)
     }
 }
 
@@ -165,25 +303,28 @@ impl<'a, const ALPHABET_SIZE: usize> Iterator for TreeIterator<'a, ALPHABET_SIZE
 mod tests {
     use super::*;
 
-    fn index(k: u32) -> Option<NonZeroU32> {
-        Some(NonZeroU32::new(k).unwrap())
-    }
-
     #[test]
     fn tree_creation() {
-        let mut tree = Tree::<3>::default();
+        let mut tree = Tree::new(3);
 
-        assert_eq!(tree, Tree { nodes: vec![] });
+        assert_eq!(
+            tree,
+            Tree {
+                alphabet_size: 3,
+                nodes: vec![]
+            }
+        );
 
         tree.insert(Word::new([0]));
 
         assert_eq!(
             tree,
             Tree {
+                alphabet_size: 3,
                 nodes: vec![Node {
                     included: true,
                     prefix: vec![0],
-                    children: [None; 3],
+                    children: smallvec![None; 3],
                 }]
             }
         );
@@ -193,16 +334,17 @@ mod tests {
         assert_eq!(
             tree,
             Tree {
+                alphabet_size: 3,
                 nodes: vec![
                     Node {
                         included: true,
                         prefix: vec![0],
-                        children: [None, index(1), None],
+                        children: smallvec![None, Some(1), None],
                     },
                     Node {
                         included: true,
                         prefix: vec![1],
-                        children: [None; 3],
+                        children: smallvec![None; 3],
                     }
                 ]
             }
@@ -213,26 +355,27 @@ mod tests {
         assert_eq!(
             tree,
             Tree {
+                alphabet_size: 3,
                 nodes: vec![
                     Node {
                         included: false,
                         prefix: vec![],
-                        children: [index(2), None, index(3)],
+                        children: smallvec![Some(2), None, Some(3)],
                     },
                     Node {
                         included: true,
                         prefix: vec![1],
-                        children: [None; 3],
+                        children: smallvec![None; 3],
                     },
                     Node {
                         included: true,
                         prefix: vec![0],
-                        children: [None, index(1), None],
+                        children: smallvec![None, Some(1), None],
                     },
                     Node {
                         included: true,
                         prefix: vec![2, 0],
-                        children: [None; 3],
+                        children: smallvec![None; 3],
                     },
                 ]
             }
@@ -243,34 +386,53 @@ mod tests {
         assert_eq!(
             tree,
             Tree {
+                alphabet_size: 3,
                 nodes: vec![
                     Node {
                         included: false,
                         prefix: vec![],
-                        children: [index(2), None, index(3)],
+                        children: smallvec![Some(2), None, Some(3)],
                     },
                     Node {
                         included: true,
                         prefix: vec![1],
-                        children: [None, None, index(4)],
+                        children: smallvec![None, None, Some(4)],
                     },
                     Node {
                         included: true,
                         prefix: vec![0],
-                        children: [None, index(1), None],
+                        children: smallvec![None, Some(1), None],
                     },
                     Node {
                         included: true,
                         prefix: vec![2, 0],
-                        children: [None; 3],
+                        children: smallvec![None; 3],
                     },
                     Node {
                         included: true,
                         prefix: vec![2],
-                        children: [None; 3],
+                        children: smallvec![None; 3],
                     },
                 ]
             }
         );
+    }
+
+    #[test]
+    fn tree_iterator() {
+        let mut tree = Tree::new(3);
+
+        tree.insert(Word::new([0]));
+        tree.insert(Word::new([2, 0]));
+        tree.insert(Word::new([0, 1, 2]));
+        tree.insert(Word::new([0, 1]));
+
+        let mut iterator = tree.iter();
+
+        assert_eq!(iterator.next(), Some(Word::new([0])));
+        assert_eq!(iterator.next(), Some(Word::new([0, 1])));
+        assert_eq!(iterator.next(), Some(Word::new([0, 1, 2])));
+        assert_eq!(iterator.next(), Some(Word::new([2, 0])));
+        assert_eq!(iterator.next(), None);
     }
 }

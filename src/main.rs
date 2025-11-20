@@ -6,13 +6,12 @@ mod stats;
 mod ui;
 
 use crate::{
-    math::{cache::DataCache, enumeration::all_rule_indexes, sampling::SamplingDataCache},
+    math::sampling::SamplingDataCache,
     stats::{StatisticalParameters, Statistics},
-    ui::SimpleCGDStatisticsApp,
 };
 
 fn main() {
-    let native_options = eframe::NativeOptions::default();
+    // let native_options = eframe::NativeOptions::default();
 
     let params: StatisticalParameters = StatisticalParameters {
         growth: stats::growth::GrowthParameters {
