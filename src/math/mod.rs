@@ -1,5 +1,6 @@
 pub mod cache;
 pub mod derangement;
+pub mod double_tree;
 pub mod enumeration;
 pub mod graph;
 pub mod permutation;

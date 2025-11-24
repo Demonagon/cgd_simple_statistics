@@ -66,12 +66,20 @@ impl Word {
         }
     }
 
-    pub fn has_prefix_in_suffixes_of(&self, other: &Word) -> bool {
-        let min_offset = (other.len() as isize - self.len() as isize).max(0) as usize;
-        let max_offset = other.len() - 1;
+    pub fn reversed(&self) -> Self {
+        Word {
+            data: self.data.iter().cloned().rev().collect(),
+        }
+    }
 
-        for offset in min_offset..=max_offset {
-            if self.data[0..other.len() - offset] == other.data[offset..other.len()] {
+    pub fn intersects_suffixes_of(&self, other: &Word) -> bool {
+        for offset in 0..other.len() {
+            let comparable_length = (other.len() - offset).min(self.len());
+            if comparable_length == 0 {
+                continue;
+            }
+
+            if self.data[0..comparable_length] == other.data[offset..offset + comparable_length] {
                 return true;
             }
         }
@@ -154,10 +162,13 @@ mod tests {
 
     #[test]
     fn prefix_suffix() {
-        assert!(Word::new([0, 1, 2]).has_prefix_in_suffixes_of(&Word::new([1, 2, 0])));
-        assert!(Word::new([1, 2, 0]).has_prefix_in_suffixes_of(&Word::new([0, 1, 2])));
-        assert!(Word::new([1, 2, 0]).has_prefix_in_suffixes_of(&Word::new([1, 2, 0])));
-        assert!(!Word::new([1, 2, 0]).has_prefix_in_suffixes_of(&Word::new([2, 2, 0])));
+        assert!(Word::new([0, 1, 2]).intersects_suffixes_of(&Word::new([1, 2, 0])));
+        assert!(Word::new([1, 2, 0]).intersects_suffixes_of(&Word::new([0, 1, 2])));
+        assert!(Word::new([1, 2, 0]).intersects_suffixes_of(&Word::new([1, 2, 0])));
+        assert!(!Word::new([1, 2, 0]).intersects_suffixes_of(&Word::new([2, 2, 0])));
+        assert!(Word::new([0]).intersects_suffixes_of(&Word::new([1, 0, 1])));
+        assert!(Word::new([0]).intersects_suffixes_of(&Word::new([1, 0])));
+        assert!(Word::new([0]).intersects_suffixes_of(&Word::new([0, 1])));
     }
 
     #[test]

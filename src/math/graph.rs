@@ -9,8 +9,8 @@ const EDGES_CAPACITY: usize = 32;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Graph<T> {
-    values: Vec<T>,
-    edges: Vec<SmallVec<[usize; EDGES_CAPACITY]>>,
+    pub values: Vec<T>,
+    pub edges: Vec<SmallVec<[usize; EDGES_CAPACITY]>>,
 }
 
 impl<T> Default for Graph<T> {

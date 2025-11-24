@@ -3,12 +3,8 @@ use std::collections::HashMap;
 use rand::{Rng, seq::IndexedRandom};
 
 use crate::math::{
-    cache::SumsCache,
-    derangement::sample_permutation,
-    graph::Graph,
-    permutation::Permutation,
-    set::{compute_words_graph, self_bifix_free_words},
-    word::Word,
+    cache::SumsCache, derangement::sample_permutation, double_tree::DoubleTree, graph::Graph,
+    permutation::Permutation, set::self_bifix_free_words, word::Word,
 };
 
 #[derive(Default, Debug)]
@@ -19,9 +15,11 @@ pub struct SamplingDataCache {
 }
 
 impl SamplingDataCache {
-    pub fn precompute_up_to(&mut self, alphabet_size: u32, radius: u32) {
+    pub fn new(alphabet_size: u32, radius: u32) -> Self {
+        let mut result = Self::default();
+
         // the max word size for a given radius is n + 1
-        self.sums.precompute_up_to(radius);
+        result.sums.precompute_up_to(radius);
 
         let mut words = vec![];
 
@@ -29,17 +27,20 @@ impl SamplingDataCache {
             words.extend(self_bifix_free_words(alphabet_size, r + 1));
         }
 
-        self.bifix_free_graph = compute_words_graph(&words);
-        self.graph_ranges = self.bifix_free_graph.word_size_ranges();
+        //result.bifix_free_graph = compute_words_graph(&words);
+        result.bifix_free_graph = DoubleTree::new(alphabet_size as usize, words).into_graph();
+        result.graph_ranges = result.bifix_free_graph.word_size_ranges();
 
-        // we do a step to exclude sums from self.sums when it contains a radius
-        // the word size of which has no initial index in self.graph_ranges
+        // we do a step to exclude sums from result.sums when it contains a radius
+        // the word size of which has no initial index in result.graph_ranges
 
-        for sums in self.sums.sums.values_mut() {
-            sums.retain(|values| values.iter().all(|k| self.graph_ranges.contains_key(k)));
+        for sums in result.sums.sums.values_mut() {
+            sums.retain(|values| values.iter().all(|k| result.graph_ranges.contains_key(k)));
         }
 
         //self.sums.sums.retain(|_, sums| !sums.is_empty());
+
+        result
     }
 
     pub fn sample_rule(&self, radius: u32, rng: &mut impl Rng) -> Vec<Permutation> {

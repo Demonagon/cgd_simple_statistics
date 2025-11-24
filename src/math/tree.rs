@@ -14,9 +14,9 @@ const NODE_CAPACITY: usize = 8;
 pub struct Node {
     // if this nodes corresponds to a word,
     // contains its given index
-    word_index: Option<usize>,
-    prefix: Vec<u8>,
-    children: SmallVec<[Option<usize>; NODE_CAPACITY]>,
+    pub word_index: Option<usize>,
+    pub prefix: Vec<u8>,
+    pub children: SmallVec<[Option<usize>; NODE_CAPACITY]>,
 }
 
 impl Node {
@@ -50,8 +50,8 @@ impl Node {
 
 #[derive(PartialEq, Eq, Clone, Debug)]
 pub struct Tree {
-    alphabet_size: usize,
-    nodes: Vec<Node>,
+    pub alphabet_size: usize,
+    pub nodes: Vec<Node>,
 }
 
 impl Tree {
@@ -239,6 +239,7 @@ impl<'a, F: Fn(&Word) -> bool> PrefixFilteringTreeIterator<'a, F> {
 
     fn walk_to_next_word(&mut self) -> Option<usize> {
         if self.tree.nodes.is_empty() {
+            self.state = TreeIteratorState::End;
             return None;
         }
 
@@ -301,6 +302,7 @@ impl<'a, F: Fn(&Word) -> bool> PrefixFilteringTreeIterator<'a, F> {
                     let Some(&parent_index) = self.index_stack.last() else {
                         // No parent, implies we are trying to go down
                         // from the root.
+                        self.state = TreeIteratorState::End;
                         return None;
                     };
 
@@ -325,6 +327,7 @@ impl<'a, F: Fn(&Word) -> bool> PrefixFilteringTreeIterator<'a, F> {
                                 None => {
                                     // Empty prefix is possible at the root
                                     // in which case the process ends
+                                    self.state = TreeIteratorState::End;
                                     return None;
                                 }
                             };
@@ -358,7 +361,7 @@ impl Tree {
     /// a word given in words.
     pub fn prefix_free_iter<'a>(&'a self, words: &'a [Word]) -> impl Iterator<Item = usize> + 'a {
         PrefixFilteringTreeIterator::new(self, |word| {
-            words.iter().all(|w| !word.has_prefix_in_suffixes_of(w))
+            words.iter().all(|w| !w.intersects_suffixes_of(word))
         })
     }
 }
@@ -535,15 +538,12 @@ mod tests {
         let mut iterator = tree.prefix_free_iter(&words);
 
         assert_eq!(iterator.next(), Some(0));
-        assert_eq!(iterator.next(), Some(1));
-        assert_eq!(iterator.next(), Some(2));
         assert_eq!(iterator.next(), Some(3));
         assert_eq!(iterator.next(), None);
 
         let words = [Word::new([0])];
         let mut iterator = tree.prefix_free_iter(&words);
 
-        assert_eq!(iterator.next(), Some(3));
         assert_eq!(iterator.next(), None);
 
         let words = [Word::new([2])];
@@ -551,13 +551,12 @@ mod tests {
 
         assert_eq!(iterator.next(), Some(0));
         assert_eq!(iterator.next(), Some(1));
-        assert_eq!(iterator.next(), Some(2));
         assert_eq!(iterator.next(), None);
 
         let words = [Word::new([1, 1, 1, 0])];
         let mut iterator = tree.prefix_free_iter(&words);
 
-        assert_eq!(iterator.next(), Some(3));
+        assert_eq!(iterator.next(), Some(0));
         assert_eq!(iterator.next(), None);
 
         let words = [Word::new([0, 0, 1]), Word::new([2, 2, 2, 1, 2])];

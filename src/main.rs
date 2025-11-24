@@ -21,11 +21,10 @@ fn main() {
         },
     };
 
-    let alphabet_size = 4;
-    let max_radius = 5;
+    let alphabet_size = 3;
+    let max_radius = 7;
 
-    let mut sample_cache = SamplingDataCache::default();
-    sample_cache.precompute_up_to(alphabet_size, max_radius);
+    let sample_cache = SamplingDataCache::new(alphabet_size, max_radius);
 
     // let mut rng = rand::rng();
     // for _k in 0..10 {
