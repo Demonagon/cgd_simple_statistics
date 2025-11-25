@@ -1,4 +1,8 @@
-use rayon::slice::ParallelSliceMut;
+use indicatif::ParallelProgressIterator;
+use rayon::{
+    iter::{IntoParallelRefIterator, ParallelIterator},
+    slice::ParallelSliceMut,
+};
 
 use crate::math::{graph::Graph, tree::Tree, word::Word};
 
@@ -57,15 +61,13 @@ impl DoubleTree {
     pub fn into_graph(self) -> Graph<Word> {
         let edges = self
             .words
-            .iter()
+            .par_iter()
+            .progress()
             .map(|word| {
-                let mut forward_indexes = self
-                    .forward
-                    .prefix_free_iter(&[word.clone()])
-                    .collect::<Vec<_>>();
+                let mut forward_indexes = self.forward.prefix_free_iter(&word).collect::<Vec<_>>();
                 let mut backward_indexes = self
                     .backward
-                    .prefix_free_iter(&[word.reversed()])
+                    .prefix_free_iter(&word.reversed())
                     .collect::<Vec<_>>();
 
                 forward_indexes.par_sort_unstable();
@@ -226,7 +228,7 @@ mod tests {
     #[test]
     fn large_scale_test() {
         let alphabet_size = 3;
-        let radius = 2;
+        let radius = 3;
 
         let mut words = vec![];
 
@@ -237,6 +239,7 @@ mod tests {
         let reference = compute_words_graph(&words);
         let value = DoubleTree::new(alphabet_size as usize, words).into_graph();
 
+        assert_eq!(reference.values, value.values);
         assert_eq!(reference.edges, value.edges);
     }
 }

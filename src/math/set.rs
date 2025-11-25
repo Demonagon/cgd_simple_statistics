@@ -1,12 +1,15 @@
+use indicatif::ParallelProgressIterator;
 use rand::{Rng, seq::IndexedRandom};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 
 use crate::math::{graph::Graph, word::Word};
 
-pub fn self_bifix_free_words(alphabet_size: u32, word_size: u32) -> impl Iterator<Item = Word> {
+pub fn self_bifix_free_words(alphabet_size: u32, word_size: u32) -> Vec<Word> {
     let count = alphabet_size.pow(word_size);
 
     (0..count)
+        .into_par_iter()
+        .progress()
         .map(move |mut k| {
             let mut result = Word::new([]);
 
@@ -18,6 +21,7 @@ pub fn self_bifix_free_words(alphabet_size: u32, word_size: u32) -> impl Iterato
             Word::new(result.data.into_iter().rev())
         })
         .filter(|word| word.is_self_bifix_free())
+        .collect()
 }
 
 pub fn compute_words_graph(words: &[Word]) -> Graph<Word> {
@@ -199,17 +203,17 @@ mod tests {
     #[test]
     fn test_self_bifix_free_words() {
         assert_eq!(
-            self_bifix_free_words(2, 1).collect::<Vec<_>>(),
+            self_bifix_free_words(2, 1),
             vec![Word::new([0]), Word::new([1])]
         );
 
         assert_eq!(
-            self_bifix_free_words(2, 2).collect::<Vec<_>>(),
+            self_bifix_free_words(2, 2),
             vec![Word::new([0, 1]), Word::new([1, 0])]
         );
 
         assert_eq!(
-            self_bifix_free_words(2, 3).collect::<Vec<_>>(),
+            self_bifix_free_words(2, 3),
             vec![
                 Word::new([0, 0, 1]),
                 Word::new([0, 1, 1]),
@@ -219,7 +223,7 @@ mod tests {
         );
 
         assert_eq!(
-            self_bifix_free_words(2, 4).collect::<Vec<_>>(),
+            self_bifix_free_words(2, 4),
             vec![
                 Word::new([0, 0, 0, 1]),
                 Word::new([0, 0, 1, 1]),
@@ -231,7 +235,7 @@ mod tests {
         );
 
         assert_eq!(
-            self_bifix_free_words(2, 5).collect::<Vec<_>>(),
+            self_bifix_free_words(2, 5),
             vec![
                 Word::new([0, 0, 0, 0, 1]),
                 Word::new([0, 0, 0, 1, 1]),

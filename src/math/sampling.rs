@@ -19,24 +19,35 @@ impl SamplingDataCache {
         let mut result = Self::default();
 
         // the max word size for a given radius is n + 1
+        println!("Computing sums...");
         result.sums.precompute_up_to(radius);
+        println!("done.");
 
         let mut words = vec![];
 
+        println!("Computing words...");
         for r in 0..=radius {
+            println!("size {r}");
             words.extend(self_bifix_free_words(alphabet_size, r + 1));
+            println!("done.");
         }
 
         //result.bifix_free_graph = compute_words_graph(&words);
+        println!("Computing graph...");
         result.bifix_free_graph = DoubleTree::new(alphabet_size as usize, words).into_graph();
+        println!("done.");
+        println!("Computing ranges...");
         result.graph_ranges = result.bifix_free_graph.word_size_ranges();
+        println!("done.");
 
         // we do a step to exclude sums from result.sums when it contains a radius
         // the word size of which has no initial index in result.graph_ranges
 
+        println!("Computing filtering sums...");
         for sums in result.sums.sums.values_mut() {
             sums.retain(|values| values.iter().all(|k| result.graph_ranges.contains_key(k)));
         }
+        println!("done.");
 
         //self.sums.sums.retain(|_, sums| !sums.is_empty());
 

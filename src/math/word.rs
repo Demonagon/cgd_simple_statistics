@@ -73,13 +73,30 @@ impl Word {
     }
 
     pub fn intersects_suffixes_of(&self, other: &Word) -> bool {
-        for offset in 0..other.len() {
+        let min_offset = 0.max(other.len() as isize - self.len() as isize) as usize;
+        for offset in min_offset..other.len() {
             let comparable_length = (other.len() - offset).min(self.len());
             if comparable_length == 0 {
                 continue;
             }
 
             if self.data[0..comparable_length] == other.data[offset..offset + comparable_length] {
+                return true;
+            }
+        }
+
+        false
+    }
+
+    pub fn is_in(&self, other: &Word) -> bool {
+        if other.len() < self.len() {
+            return false;
+        }
+
+        let max_offset = other.len() - self.len();
+
+        for offset in 0..=max_offset {
+            if self.data[0..self.len()] == other.data[offset..offset + self.len()] {
                 return true;
             }
         }
@@ -166,9 +183,12 @@ mod tests {
         assert!(Word::new([1, 2, 0]).intersects_suffixes_of(&Word::new([0, 1, 2])));
         assert!(Word::new([1, 2, 0]).intersects_suffixes_of(&Word::new([1, 2, 0])));
         assert!(!Word::new([1, 2, 0]).intersects_suffixes_of(&Word::new([2, 2, 0])));
-        assert!(Word::new([0]).intersects_suffixes_of(&Word::new([1, 0, 1])));
+        assert!(!Word::new([0]).intersects_suffixes_of(&Word::new([1, 0, 1])));
         assert!(Word::new([0]).intersects_suffixes_of(&Word::new([1, 0])));
-        assert!(Word::new([0]).intersects_suffixes_of(&Word::new([0, 1])));
+        assert!(Word::new([0]).intersects_suffixes_of(&Word::new([1, 0])));
+        assert!(Word::new([0]).intersects_suffixes_of(&Word::new([1, 1, 1, 0])));
+        assert!(!Word::new([1, 1, 1, 0]).intersects_suffixes_of(&Word::new([0])));
+        assert!(!Word::new([0]).intersects_suffixes_of(&Word::new([0, 1])));
     }
 
     #[test]
@@ -266,5 +286,17 @@ mod tests {
             Word::new([0, 1, 2]).shared_prefix(&Word::new([2])),
             Word::new([])
         );
+    }
+
+    #[test]
+    fn test_is_in() {
+        assert!(Word::new([0, 1, 1]).is_in(&Word::new([0, 1, 1])));
+        assert!(Word::new([0, 1]).is_in(&Word::new([0, 1, 1])));
+        assert!(Word::new([0]).is_in(&Word::new([0, 1, 1])));
+        assert!(Word::new([1]).is_in(&Word::new([0, 1, 1])));
+        assert!(Word::new([]).is_in(&Word::new([0, 1, 1])));
+        assert!(Word::new([]).is_in(&Word::new([])));
+        assert!(!Word::new([1]).is_in(&Word::new([])));
+        assert!(!Word::new([0, 1, 1]).is_in(&Word::new([0, 1])));
     }
 }

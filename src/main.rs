@@ -21,8 +21,10 @@ fn main() {
         },
     };
 
-    let alphabet_size = 3;
-    let max_radius = 7;
+    let alphabet_size = 8;
+    let max_radius = 3;
+
+    println!("Computing cache...");
 
     let sample_cache = SamplingDataCache::new(alphabet_size, max_radius);
 
@@ -42,12 +44,13 @@ fn main() {
     let mut stats = Statistics::default();
 
     for radius in 0..=max_radius {
+        println!("radius {radius}..");
         //     let indexes = all_rule_indexes(&cache, alphabet_size, radius)
         //         .take(100000)
         //         .collect::<Vec<_>>();
 
         //     params.compute(&mut cache, alphabet_size, radius, &indexes, &mut stats);
-        params.sample(&sample_cache, alphabet_size, radius, 10000, &mut stats);
+        params.sample(&sample_cache, alphabet_size, radius, 5000, &mut stats);
     }
 
     let mut data = stats.growth.data.into_iter().collect::<Vec<_>>();

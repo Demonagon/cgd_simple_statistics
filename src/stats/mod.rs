@@ -12,6 +12,7 @@ use crate::{
 
 pub mod growth;
 
+use indicatif::ParallelProgressIterator;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 
 #[derive(Debug, Default, Clone)]
@@ -76,6 +77,7 @@ impl StatisticalParameters {
 
         let is_growing = (0..count)
             .into_par_iter()
+            .progress()
             .map(|_| {
                 let mut rng = rand::rng();
 
