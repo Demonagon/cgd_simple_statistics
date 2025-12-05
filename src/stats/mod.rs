@@ -123,10 +123,10 @@ impl StatisticalParameters {
                 let mut rng = rand::rng();
 
                 // we ask for a simple rule set
-                let rule = cache.sample_rule(radius - 1, &mut rng);
+                let rule = cache.sample_rule(radius, &mut rng);
 
                 // to compensate with the +1 of the shift
-                let rule_radius = rules_radius(&rule) + 1;
+                let rule_radius = rules_radius(&rule);
 
                 let shift = generate_random_shift(alphabet_size, &mut rng);
 

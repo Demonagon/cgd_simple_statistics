@@ -5,6 +5,8 @@ mod math;
 mod stats;
 mod ui;
 
+use std::{fs::File, io::Write};
+
 use crate::{
     math::sampling::SamplingDataCache,
     stats::{StatisticalParameters, Statistics},
@@ -60,7 +62,7 @@ fn compute(alphabet_size: u32, max_radius: u32) {
 
     let mut stats = Statistics::default();
 
-    for radius in 1..=max_radius {
+    for radius in 0..=max_radius {
         println!("radius {radius}..");
         //     let indexes = all_rule_indexes(&cache, alphabet_size, radius)
         //         .take(100000)
@@ -73,7 +75,16 @@ fn compute(alphabet_size: u32, max_radius: u32) {
     let mut data = stats.growth.data.into_iter().collect::<Vec<_>>();
     data.sort_by(|(a, _), (b, _)| a.cmp(b));
 
+    let mut file =
+        File::create(format!("output/{alphabet_size}.txt")).expect("couldn't create file");
+
     for (radius, point) in data {
+        file.write_fmt(format_args!(
+            "{}, {}\n",
+            radius.1,
+            point.growing_proportion().unwrap_or(0.0)
+        ))
+        .expect("couldn't write");
         println!("alphabet_size, radius {radius:?} :");
         println!("{point:?}");
         println!("{}%", point.growing_proportion().unwrap_or(0.0) * 100.0);
@@ -111,7 +122,7 @@ fn compute_shift(alphabet_size: u32, max_radius: u32) {
 
     let mut stats = Statistics::default();
 
-    for radius in 1..=max_radius {
+    for radius in 0..=max_radius {
         println!("radius {radius}..");
         //     let indexes = all_rule_indexes(&cache, alphabet_size, radius)
         //         .take(100000)
@@ -124,7 +135,16 @@ fn compute_shift(alphabet_size: u32, max_radius: u32) {
     let mut data = stats.growth.data.into_iter().collect::<Vec<_>>();
     data.sort_by(|(a, _), (b, _)| a.cmp(b));
 
+    let mut file =
+        File::create(format!("output/shift_{alphabet_size}.txt")).expect("couldn't create file");
+
     for (radius, point) in data {
+        file.write_fmt(format_args!(
+            "{}, {}\n",
+            radius.1,
+            point.growing_proportion().unwrap_or(0.0)
+        ))
+        .expect("couldn't write");
         println!("alphabet_size, radius {radius:?} :");
         println!("{point:?}");
         println!("{}%", point.growing_proportion().unwrap_or(0.0) * 100.0);
