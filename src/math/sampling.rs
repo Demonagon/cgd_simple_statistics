@@ -14,44 +14,103 @@ pub struct SamplingDataCache {
     pub sums: SumsCache,
 }
 
+fn log(s: impl ToString) {
+    if !cfg!(test) {
+        println!("{}", s.to_string());
+    }
+}
+
 impl SamplingDataCache {
     pub fn new(alphabet_size: u32, radius: u32) -> Self {
-        let mut result = Self::default();
-
         // the max word size for a given radius is n + 1
-        println!("Computing sums...");
-        result.sums.precompute_up_to(radius);
-        println!("done.");
+        log("Computing sums...");
+        let mut sums = SumsCache::default();
+        sums.precompute_up_to(radius);
+        log("done.");
 
         let mut words = vec![];
 
-        println!("Computing words...");
+        log("Computing words...");
         for r in 0..=radius {
-            println!("size {r}");
+            log(format!("size {r}"));
             words.extend(self_bifix_free_words(alphabet_size, r + 1));
-            println!("done.");
+            log("done.");
         }
 
         //result.bifix_free_graph = compute_words_graph(&words);
-        println!("Computing graph...");
-        result.bifix_free_graph = DoubleTree::new(alphabet_size as usize, words).into_graph();
-        println!("done.");
-        println!("Computing ranges...");
-        result.graph_ranges = result.bifix_free_graph.word_size_ranges();
-        println!("done.");
+        log("Computing graph...");
+        let bifix_free_graph = DoubleTree::new(alphabet_size as usize, words).into_graph();
+        log("done.");
+        log("Computing ranges...");
+        let graph_ranges = bifix_free_graph.word_size_ranges();
+        log("done.");
 
         // we do a step to exclude sums from result.sums when it contains a radius
         // the word size of which has no initial index in result.graph_ranges
 
-        println!("Computing filtering sums...");
-        for sums in result.sums.sums.values_mut() {
-            sums.retain(|values| values.iter().all(|k| result.graph_ranges.contains_key(k)));
+        log("Computing filtering sums...");
+        for sum in sums.sums.values_mut() {
+            sum.retain(|values| values.iter().all(|k| graph_ranges.contains_key(k)));
         }
-        println!("done.");
+        log("done.");
 
-        //self.sums.sums.retain(|_, sums| !sums.is_empty());
+        Self {
+            bifix_free_graph,
+            graph_ranges,
+            sums,
+        }
+    }
 
-        result
+    pub fn new_number_conserving(alphabet_size: u32, radius: u32) -> Self {
+        // the max word size for a given radius is n + 1
+        log("Computing sums...");
+        let mut sums = SumsCache::default();
+        sums.precompute_up_to(radius);
+        log("done.");
+
+        let mut words = vec![];
+
+        log("Computing words...");
+        for r in 0..=radius {
+            log("size {r}");
+            words.extend(self_bifix_free_words(alphabet_size, r + 1));
+            log("done.");
+        }
+
+        let mut sorted_words: HashMap<u32, Vec<Word>> = Default::default();
+
+        for word in words {
+            let sum = word.value_sum();
+            sorted_words.entry(sum).or_default().push(word);
+        }
+
+        let mut bifix_free_graph = Graph::default();
+
+        for (sum, words) in sorted_words {
+            log(format!("Computing graph for sum {sum}..."));
+            let graph = DoubleTree::new(alphabet_size as usize, words).into_graph();
+            bifix_free_graph.append(graph);
+            log("done.");
+        }
+
+        log("Computing ranges...");
+        let graph_ranges = bifix_free_graph.word_size_ranges();
+        log("done.");
+
+        // we do a step to exclude sums from result.sums when it contains a radius
+        // the word size of which has no initial index in result.graph_ranges
+
+        log("Computing filtering sums...");
+        for sum in sums.sums.values_mut() {
+            sum.retain(|values| values.iter().all(|k| graph_ranges.contains_key(k)));
+        }
+        log("done.");
+
+        Self {
+            bifix_free_graph,
+            graph_ranges,
+            sums,
+        }
     }
 
     pub fn sample_rule(&self, radius: u32, rng: &mut impl Rng) -> Vec<Permutation> {

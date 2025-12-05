@@ -39,6 +39,7 @@ impl<I: Iterator<Item = usize>, J: Iterator<Item = usize>> Iterator for Intersec
 }
 
 impl DoubleTree {
+    #[allow(clippy::needless_range_loop)]
     pub fn new(alphabet_size: usize, mut words: Vec<Word>) -> Self {
         let mut forward = Tree::new(alphabet_size);
         let mut backward = Tree::new(alphabet_size);
@@ -59,27 +60,50 @@ impl DoubleTree {
     }
 
     pub fn into_graph(self) -> Graph<Word> {
-        let edges = self
-            .words
-            .par_iter()
-            .progress()
-            .map(|word| {
-                let mut forward_indexes = self.forward.prefix_free_iter(&word).collect::<Vec<_>>();
-                let mut backward_indexes = self
-                    .backward
-                    .prefix_free_iter(&word.reversed())
-                    .collect::<Vec<_>>();
+        let edges = if cfg!(test) {
+            self.words
+                .par_iter()
+                .map(|word| {
+                    let mut forward_indexes =
+                        self.forward.prefix_free_iter(word).collect::<Vec<_>>();
+                    let mut backward_indexes = self
+                        .backward
+                        .prefix_free_iter(&word.reversed())
+                        .collect::<Vec<_>>();
 
-                forward_indexes.par_sort_unstable();
-                backward_indexes.par_sort_unstable();
+                    forward_indexes.par_sort_unstable();
+                    backward_indexes.par_sort_unstable();
 
-                IntersectionIterator {
-                    first: forward_indexes.into_iter(),
-                    second: backward_indexes.into_iter(),
-                }
+                    IntersectionIterator {
+                        first: forward_indexes.into_iter(),
+                        second: backward_indexes.into_iter(),
+                    }
+                    .collect()
+                })
                 .collect()
-            })
-            .collect();
+        } else {
+            self.words
+                .par_iter()
+                .progress()
+                .map(|word| {
+                    let mut forward_indexes =
+                        self.forward.prefix_free_iter(word).collect::<Vec<_>>();
+                    let mut backward_indexes = self
+                        .backward
+                        .prefix_free_iter(&word.reversed())
+                        .collect::<Vec<_>>();
+
+                    forward_indexes.par_sort_unstable();
+                    backward_indexes.par_sort_unstable();
+
+                    IntersectionIterator {
+                        first: forward_indexes.into_iter(),
+                        second: backward_indexes.into_iter(),
+                    }
+                    .collect()
+                })
+                .collect()
+        };
 
         Graph {
             values: self.words,

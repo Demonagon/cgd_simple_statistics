@@ -6,6 +6,7 @@ pub mod graph;
 pub mod permutation;
 pub mod sampling;
 pub mod set;
+pub mod shift;
 pub mod sum;
 pub mod tree;
 pub mod word;

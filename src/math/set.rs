@@ -7,21 +7,38 @@ use crate::math::{graph::Graph, word::Word};
 pub fn self_bifix_free_words(alphabet_size: u32, word_size: u32) -> Vec<Word> {
     let count = alphabet_size.pow(word_size);
 
-    (0..count)
-        .into_par_iter()
-        .progress()
-        .map(move |mut k| {
-            let mut result = Word::new([]);
+    if cfg!(test) {
+        (0..count)
+            .into_par_iter()
+            .map(move |mut k| {
+                let mut result = Word::new([]);
 
-            for _ in 0..word_size {
-                result.data.push(k.rem_euclid(alphabet_size) as u8);
-                k = k.div_euclid(alphabet_size);
-            }
+                for _ in 0..word_size {
+                    result.data.push(k.rem_euclid(alphabet_size) as u8);
+                    k = k.div_euclid(alphabet_size);
+                }
 
-            Word::new(result.data.into_iter().rev())
-        })
-        .filter(|word| word.is_self_bifix_free())
-        .collect()
+                Word::new(result.data.into_iter().rev())
+            })
+            .filter(|word| word.is_self_bifix_free())
+            .collect()
+    } else {
+        (0..count)
+            .into_par_iter()
+            .progress()
+            .map(move |mut k| {
+                let mut result = Word::new([]);
+
+                for _ in 0..word_size {
+                    result.data.push(k.rem_euclid(alphabet_size) as u8);
+                    k = k.div_euclid(alphabet_size);
+                }
+
+                Word::new(result.data.into_iter().rev())
+            })
+            .filter(|word| word.is_self_bifix_free())
+            .collect()
+    }
 }
 
 pub fn compute_words_graph(words: &[Word]) -> Graph<Word> {

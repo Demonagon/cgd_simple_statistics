@@ -196,7 +196,7 @@ impl Tree {
 // ###############################################################
 
 impl Tree {
-    pub fn iter<'a>(&'a self) -> impl Iterator<Item = usize> {
+    pub fn iter(&self) -> impl Iterator<Item = usize> {
         PrefixFilteringTreeIterator::new(self, |_| true, |_| true)
     }
 }

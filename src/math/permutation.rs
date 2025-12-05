@@ -82,6 +82,18 @@ pub fn apply_rules(rules: &[Permutation], mut word: Word) -> Word {
 }
 
 impl Permutation {
+    pub fn reverse(&self) -> Self {
+        let mut new_map = vec![0; self.map.len()];
+
+        for k in 0..self.map.len() {
+            new_map[self.map[k]] = k;
+        }
+
+        Self {
+            set: self.set.clone(),
+            map: new_map,
+        }
+    }
     /// Tries to advance into our reading of each word of the permutation
     /// by the provided letter. If words are interrupted, their progress
     /// go back to 0.

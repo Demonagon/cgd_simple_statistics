@@ -105,6 +105,17 @@ impl<T> Graph<T> {
             indices.iter_mut().for_each(|k| *k += 1);
         }
     }
+
+    pub fn append(&mut self, other: Self) {
+        let offset = self.len();
+        self.values.extend(other.values);
+        self.edges.extend(
+            other
+                .edges
+                .into_iter()
+                .map(|edges| edges.iter().map(|k| k + offset).collect()),
+        );
+    }
 }
 
 impl<T: Ord + Clone> Graph<T> {
