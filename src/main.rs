@@ -16,12 +16,18 @@ fn main() {
     // let native_options = eframe::NativeOptions::default();
 
     let parameters = [
-        (4, 5), //(3, 9),
-                //(4, 7), (5, 6), (6, 4), (7, 3), (8, 3)
+        //(4, 5),
+        (3, 9),
+        (4, 7),
+        (5, 6),
+        (6, 4),
+        (7, 3),
+        (8, 3),
     ];
 
     for (a, b) in parameters {
         compute(a, b);
+        compute_shift(a, b);
     }
 
     // _ = eframe::run_native(
